@@ -14,6 +14,8 @@ When a user asks a question and a documentation URL is available:
 - Filesystem — reads from package `assets/`, writes to `site_dir/assets/` (002-assets-injection)
 - Python 3.10+ + `mkdocs>=1.5`, `logger.py` (001), `assets.py` (002) — no new packages (003-plugin-hooks)
 - N/A (reads config, writes to template context) (003-plugin-hooks)
+- Python 3.10+ + `fastapi`, `uvicorn`, `anyio`, `claude-agent-sdk>=0.1.50` (already in `pyproject.toml`) (004-chat-server)
+- N/A — stateless per-request (004-chat-server)
 
 ## Recent Changes
 - 001-logger-adapter: Added Python 3.10+ + stdlib `logging` only — no new packages
