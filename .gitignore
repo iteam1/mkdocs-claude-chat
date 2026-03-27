@@ -35,6 +35,6 @@ site/
 uv.lock
 
 # Dev tooling (not for public repo)
-.claude/
-.specify/
-.pdm-build/
+# .claude/
+# .specify/
+# .pdm-build/
