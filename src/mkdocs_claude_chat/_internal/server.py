@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
+import time
+import urllib.error
+import urllib.request
 from collections.abc import AsyncIterator
 
 import uvicorn
@@ -17,44 +21,94 @@ from mkdocs_claude_chat._internal.logger import get_logger
 
 _logger = get_logger(__name__)
 
-_SYSTEM_PROMPT_WITH_LLMSTXT = """\
-You are a documentation assistant. Your primary knowledge source is the documentation site. \
-You MUST fetch and read the docs before answering — never answer from memory alone.
+# ── Docs cache ────────────────────────────────────────────────────────────────
+# Keyed by llmstxt_url. Refreshed at most once every 15 seconds so hot-reloads
+# are picked up quickly without hammering the dev server on every message.
+_CACHE_TTL = 15  # seconds
+_docs_cache: dict[str, tuple[float, str]] = {}  # url -> (timestamp, content)
 
-## Step-by-step — follow this every time, no exceptions
 
-1. **Fetch the index**: Use `curl -s "{llmstxt_url}"` or WebFetch to GET the documentation index.
-2. **Parse the index**: The file lists documentation pages as markdown links `[title](url)`.
-   Read every link title and URL.
-3. **Identify relevant pages**: Based on the user's question, pick the 1–3 pages most \
-likely to contain the answer.
-4. **Fetch those pages**: Use curl, WebFetch, or WebSearch to read each selected page's content.
-5. **Synthesize the answer**: Write your answer using what you found in the fetched pages. \
-Quote or cite specific sections when helpful.
-6. **If docs don't cover it**: Say clearly that the documentation does not cover this topic, \
-then answer from your general knowledge — but label it explicitly as "outside the docs".
+def _fetch(url: str, timeout: int = 5) -> str:
+    """Fetch a URL and return the response body as text. Returns '' on error."""
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:  # noqa: S310
+            return resp.read().decode("utf-8", errors="replace")
+    except Exception as exc:  # noqa: BLE001
+        _logger.debug("fetch failed %s: %s", url, exc)
+        return ""
 
-## Rules
-- Always run steps 1–4 before composing your answer.
-- If a curl fetch fails (non-200 or empty), tell the user and try another page from the index.
-- Keep answers concise and grounded in what you actually read.\
+
+def _base_url(llmstxt_url: str) -> str:
+    """Return the base URL (everything before the filename)."""
+    return llmstxt_url.rsplit("/", 1)[0] + "/"
+
+
+def _load_docs(llmstxt_url: str) -> str:
+    """Fetch and return documentation content for the given llms.txt URL.
+
+    Strategy:
+    1. Try ``<base>/llms-full.txt`` — a single file with all docs concatenated.
+    2. Fall back: fetch ``llms.txt``, parse every markdown link, fetch each page.
+
+    Results are cached for :data:`_CACHE_TTL` seconds.
+    """
+    now = time.monotonic()
+    cached = _docs_cache.get(llmstxt_url)
+    if cached and now - cached[0] < _CACHE_TTL:
+        return cached[1]
+
+    base = _base_url(llmstxt_url)
+    full_txt_url = base + "llms-full.txt"
+    content = _fetch(full_txt_url)
+
+    if not content:
+        # Fall back: fetch llms.txt index, then each linked page
+        index = _fetch(llmstxt_url)
+        if index:
+            pages = [llmstxt_url]  # include the index itself
+            for match in re.finditer(r"\[([^\]]+)\]\(([^)]+)\)", index):
+                page_url = match.group(2)
+                if not page_url.startswith("http"):
+                    page_url = base + page_url.lstrip("/")
+                pages.append(page_url)
+            parts = [index]
+            for page_url in pages[1:]:
+                page = _fetch(page_url)
+                if page:
+                    parts.append(f"\n\n---\n<!-- source: {page_url} -->\n\n{page}")
+            content = "\n".join(parts)
+
+    _docs_cache[llmstxt_url] = (now, content)
+    _logger.debug("loaded docs (%d chars) from %s", len(content), llmstxt_url)
+    return content
+
+
+# ── System prompts ────────────────────────────────────────────────────────────
+
+_SYSTEM_PROMPT_WITH_DOCS = """\
+You are a documentation assistant. The full documentation content is provided below — \
+use it as your primary knowledge source.
+
+## Documentation
+
+{docs_content}
+
+---
+
+## Instructions
+
+- Answer based on the documentation above.
+- Quote or reference specific sections when helpful.
+- If the question is not covered in the docs, say so clearly, \
+then you may supplement with general knowledge — label it as "(outside the docs)".
+- Keep answers concise and accurate.\
 """
 
-_SYSTEM_PROMPT_NO_LLMSTXT = """\
-You are a documentation assistant. No documentation index URL was provided.
+_SYSTEM_PROMPT_NO_DOCS = """\
+You are a documentation assistant. No documentation content was found.
 
-## Step-by-step
-
-1. **Try to discover docs**: Use WebSearch to find the official documentation, or curl/WebFetch \
-if you know the site URL.
-2. **Fetch relevant pages**: Read the content of the pages you find.
-3. **Synthesize the answer**: Write your answer using what you found. Cite the source URL.
-4. **If nothing found**: Say you could not locate the documentation, then answer from \
-general knowledge and label it clearly as such.
-
-## Rules
-- Always attempt a curl fetch before answering from memory.
-- Do NOT answer from training data without first trying to fetch actual documentation.\
+Try to help the user as best you can using your general knowledge, \
+but make it clear you are not drawing from site-specific documentation.\
 """
 
 
@@ -63,9 +117,9 @@ class ChatRequest(BaseModel):
 
     Attributes:
         question: The user's question about the documentation.
-        llmstxt_url: Optional URL of the site's llms.txt index.
-        system_prompt: Optional override for the system prompt. If empty the
-            built-in documentation-fetching prompt is used.
+        llmstxt_url: URL of the site's llms.txt index. The server fetches it
+            directly so Claude does not need localhost access.
+        system_prompt: Optional override for the system prompt.
     """
 
     question: str
@@ -84,18 +138,26 @@ app.add_middleware(
 
 
 def _build_system_prompt(llmstxt_url: str) -> str:
-    """Build the Claude system prompt.
+    """Build the system prompt, pre-loading doc content from *llmstxt_url*.
+
+    The server fetches the documentation itself (it has localhost access)
+    and injects the content directly so Claude never needs network access.
 
     Args:
-        llmstxt_url: URL of the documentation site's llms.txt index.
-            May be empty, in which case a discovery fallback prompt is used.
+        llmstxt_url: URL of the site's llms.txt (or llms-full.txt base).
 
     Returns:
-        The formatted system prompt string.
+        Formatted system prompt string with docs embedded.
     """
-    if llmstxt_url:
-        return _SYSTEM_PROMPT_WITH_LLMSTXT.format(llmstxt_url=llmstxt_url)
-    return _SYSTEM_PROMPT_NO_LLMSTXT
+    if not llmstxt_url:
+        return _SYSTEM_PROMPT_NO_DOCS
+
+    docs = _load_docs(llmstxt_url)
+    if not docs:
+        _logger.warning("could not load docs from %s — Claude will answer without context", llmstxt_url)
+        return _SYSTEM_PROMPT_NO_DOCS
+
+    return _SYSTEM_PROMPT_WITH_DOCS.format(docs_content=docs)
 
 
 async def _stream_claude(question: str, llmstxt_url: str, system_prompt: str = "") -> AsyncIterator[str]:
@@ -103,11 +165,13 @@ async def _stream_claude(question: str, llmstxt_url: str, system_prompt: str = "
 
     Args:
         question: The user's question.
-        llmstxt_url: URL hint for the documentation index.
+        llmstxt_url: URL of the docs index — fetched server-side and injected
+            into the system prompt so Claude does not need localhost access.
+        system_prompt: Optional caller-supplied prompt override.
 
     Yields:
-        SSE-formatted strings: ``data: {"text": "..."}\\n\\n`` per chunk,
-        ending with ``data: [DONE]\\n\\n``.
+        SSE strings: ``data: {"text": "..."}\\n\\n`` per chunk,
+        then ``data: [DONE]\\n\\n``.
     """
     resolved_prompt = system_prompt.strip() or _build_system_prompt(llmstxt_url)
     options = ClaudeAgentOptions(
@@ -129,11 +193,7 @@ async def _stream_claude(question: str, llmstxt_url: str, system_prompt: str = "
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    """Liveness check endpoint.
-
-    Returns:
-        A JSON object confirming the server is running.
-    """
+    """Liveness check endpoint."""
     return {"status": "ok"}
 
 
@@ -142,11 +202,10 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     """Stream a Claude answer to the user's question.
 
     Args:
-        request: The chat request containing the question and optional llmstxt_url.
+        request: The chat request.
 
     Returns:
-        A streaming SSE response. Each event contains a text chunk; the stream
-        ends with ``data: [DONE]``.
+        A streaming SSE response ending with ``data: [DONE]``.
     """
     _logger.debug("chat request: question=%r, llmstxt_url=%r", request.question, request.llmstxt_url)
     return StreamingResponse(
@@ -158,9 +217,6 @@ async def chat(request: ChatRequest) -> StreamingResponse:
 
 def run(port: int = 8001) -> None:
     """Start the chat server on the given port.
-
-    Intended to be called by the MkDocs plugin during ``on_serve``. Blocks
-    until the server is stopped.
 
     Args:
         port: TCP port to listen on. Defaults to ``8001``.
