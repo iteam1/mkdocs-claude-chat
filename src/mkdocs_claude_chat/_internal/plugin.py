@@ -154,6 +154,7 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
             "llmstxtUrl": self._llmstxt_url,
             "chatTitle": self.config.chat_title,
             "position": self.config.position,
+            "systemPrompt": self.config.system_prompt or "",
         }
         script = f"<script>window.__CLAUDE_CHAT_CONFIG__ = {json.dumps(cfg)};</script>"
         return output.replace("</body>", f"{script}\n</body>", 1)

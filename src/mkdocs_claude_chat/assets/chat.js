@@ -4,7 +4,7 @@
 
   // ── Config ────────────────────────────────────────────────────────
   const cfg = Object.assign(
-    { backendUrl: "http://localhost:8001", llmstxtUrl: "", chatTitle: "Ask Claude", position: "bottom-right" },
+    { backendUrl: "http://localhost:8001", llmstxtUrl: "", chatTitle: "Ask Claude", position: "bottom-right", systemPrompt: "" },
     window.__CLAUDE_CHAT_CONFIG__ || {}
   );
 
@@ -177,7 +177,7 @@
     const res = await fetch(cfg.backendUrl + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: question, llmstxt_url: cfg.llmstxtUrl }),
+      body: JSON.stringify({ question: question, llmstxt_url: cfg.llmstxtUrl, system_prompt: cfg.systemPrompt }),
     });
     if (!res.ok) {
       throw new Error("Server error: " + res.status);
