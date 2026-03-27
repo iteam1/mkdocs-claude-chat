@@ -1,0 +1,68 @@
+site_name: "mkdocs-claude-chat"
+site_description: "MkDocs plugin to add a Claude-powered chatbot to your documentation site."
+site_url: "https://your-org.github.io/mkdocs-claude-chat"
+repo_url: "https://github.com/your-org/mkdocs-claude-chat"
+
+watch: [mkdocs.yml, README.md, src/mkdocs_claude_chat]
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+markdown_extensions:
+  - attr_list
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            filters: ["!^_"]
+            show_source: true
+            show_root_heading: true
+  - llmstxt:
+      sections:
+        Usage:
+          - index.md
+        API reference:
+          - reference/api.md
+  - claude-chat:  # dogfood
+      model: claude-sonnet-4-6
+
+nav:
+  - Home: index.md
+  - Reference:
+    - reference/api.md
