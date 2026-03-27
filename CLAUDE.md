@@ -10,6 +10,8 @@ When a user asks a question and a documentation URL is available:
 
 ## Active Technologies
 - Python 3.10+ + stdlib `logging` only — no new packages (001-logger-adapter)
+- Python 3.10+ + `shutil`, `pathlib` (stdlib only) — no new packages (002-assets-injection)
+- Filesystem — reads from package `assets/`, writes to `site_dir/assets/` (002-assets-injection)
 
 ## Recent Changes
 - 001-logger-adapter: Added Python 3.10+ + stdlib `logging` only — no new packages
