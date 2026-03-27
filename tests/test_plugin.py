@@ -100,3 +100,44 @@ def test_on_page_context_disabled_returns_none(tmp_path: Path) -> None:
     result = plugin.on_page_context(context, page=object(), config=conf)  # type: ignore[arg-type]
     assert result is None
     assert "claude_chat_config" not in context
+
+
+# --- on_post_page ---
+
+_SAMPLE_HTML = "<html><body><p>Hello</p></body></html>"
+
+
+def test_on_post_page_injects_script(tmp_path: Path) -> None:
+    conf = _make_config(tmp_path)
+    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin.on_config(conf)
+    result = plugin.on_post_page(_SAMPLE_HTML, page=object(), config=conf)  # type: ignore[arg-type]
+    assert result is not None
+    assert "<script>window.__CLAUDE_CHAT_CONFIG__" in result
+    assert "</body>" in result
+    assert result.index("<script>window.__CLAUDE_CHAT_CONFIG__") < result.index("</body>")
+
+
+def test_on_post_page_disabled_returns_none(tmp_path: Path) -> None:
+    conf = _make_config(tmp_path, enabled=False)
+    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    result = plugin.on_post_page(_SAMPLE_HTML, page=object(), config=conf)  # type: ignore[arg-type]
+    assert result is None
+
+
+def test_on_post_page_config_values(tmp_path: Path) -> None:
+    import json
+
+    conf = _make_config(tmp_path, chat_title="My Docs Chat")
+    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin.on_config(conf)
+    result = plugin.on_post_page(_SAMPLE_HTML, page=object(), config=conf)  # type: ignore[arg-type]
+    assert result is not None
+    # Extract the JSON from the script tag
+    start = result.index("__CLAUDE_CHAT_CONFIG__ = ") + len("__CLAUDE_CHAT_CONFIG__ = ")
+    end = result.index(";", start)
+    cfg = json.loads(result[start:end])
+    assert "backendUrl" in cfg
+    assert "llmstxtUrl" in cfg
+    assert cfg["chatTitle"] == "My Docs Chat"
+    assert "position" in cfg

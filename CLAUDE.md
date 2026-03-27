@@ -16,6 +16,8 @@ When a user asks a question and a documentation URL is available:
 - N/A (reads config, writes to template context) (003-plugin-hooks)
 - Python 3.10+ + `fastapi`, `uvicorn`, `anyio`, `claude-agent-sdk>=0.1.50` (already in `pyproject.toml`) (004-chat-server)
 - N/A — stateless per-request (004-chat-server)
+- JavaScript ES2020+ (no transpiler), CSS3 custom properties + None — vanilla JS + CSS, no external libraries (005-chat-widget-ui)
+- In-memory JS module scope only (chat history, drag position) (005-chat-widget-ui)
 
 ## Recent Changes
 - 001-logger-adapter: Added Python 3.10+ + stdlib `logging` only — no new packages

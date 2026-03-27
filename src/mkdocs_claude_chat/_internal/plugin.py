@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 from mkdocs.plugins import BasePlugin
@@ -98,3 +99,38 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
             "system_prompt": self.config.system_prompt or "",
         }
         return context
+
+    def on_post_page(
+        self,
+        output: str,
+        *,
+        page: Page,
+        config: MkDocsConfig,
+        **kwargs: object,
+    ) -> str | None:
+        """Inject the chat widget config into each page's HTML output.
+
+        Inserts a ``<script>window.__CLAUDE_CHAT_CONFIG__ = {...};</script>``
+        block immediately before the closing ``</body>`` tag so the widget
+        can read its settings without requiring any theme template override.
+
+        Args:
+            output: The rendered HTML string for the current page.
+            page: The MkDocs ``Page`` object being rendered.
+            config: The global MkDocs configuration object.
+            **kwargs: Accepted for forward-compatibility with future MkDocs versions.
+
+        Returns:
+            The modified HTML string, or ``None`` when the plugin is disabled.
+        """
+        if not self.config.enabled:
+            return None
+
+        cfg = {
+            "backendUrl": "http://localhost:8001",
+            "llmstxtUrl": self._llmstxt_url,
+            "chatTitle": self.config.chat_title,
+            "position": self.config.position,
+        }
+        script = f"<script>window.__CLAUDE_CHAT_CONFIG__ = {json.dumps(cfg)};</script>"
+        return output.replace("</body>", f"{script}\n</body>", 1)
