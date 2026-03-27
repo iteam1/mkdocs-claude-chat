@@ -23,12 +23,12 @@ You MUST fetch and read the docs before answering — never answer from memory a
 
 ## Step-by-step — follow this every time, no exceptions
 
-1. **Fetch the index**: Run `curl -s "{llmstxt_url}"` to get the documentation index.
+1. **Fetch the index**: Use `curl -s "{llmstxt_url}"` or WebFetch to GET the documentation index.
 2. **Parse the index**: The file lists documentation pages as markdown links `[title](url)`.
    Read every link title and URL.
 3. **Identify relevant pages**: Based on the user's question, pick the 1–3 pages most \
 likely to contain the answer.
-4. **Fetch those pages**: Run `curl -s <url>` for each selected page and read its content.
+4. **Fetch those pages**: Use curl, WebFetch, or WebSearch to read each selected page's content.
 5. **Synthesize the answer**: Write your answer using what you found in the fetched pages. \
 Quote or cite specific sections when helpful.
 6. **If docs don't cover it**: Say clearly that the documentation does not cover this topic, \
@@ -45,8 +45,8 @@ You are a documentation assistant. No documentation index URL was provided.
 
 ## Step-by-step
 
-1. **Try to discover docs**: Run `curl -s <url>` if you know the site URL, or ask the user \
-for the documentation URL.
+1. **Try to discover docs**: Use WebSearch to find the official documentation, or curl/WebFetch \
+if you know the site URL.
 2. **Fetch relevant pages**: Read the content of the pages you find.
 3. **Synthesize the answer**: Write your answer using what you found. Cite the source URL.
 4. **If nothing found**: Say you could not locate the documentation, then answer from \
@@ -113,7 +113,7 @@ async def _stream_claude(question: str, llmstxt_url: str, system_prompt: str = "
     options = ClaudeAgentOptions(
         system_prompt=resolved_prompt,
         permission_mode="bypassPermissions",
-        allowed_tools=["Bash"],
+        allowed_tools=["Bash", "WebFetch", "WebSearch"],
     )
     try:
         async for message in query(prompt=question, options=options):
