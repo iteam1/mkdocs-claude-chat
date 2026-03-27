@@ -3,7 +3,7 @@
 ## Development setup
 
 ```bash
-git clone https://github.com/your-org/mkdocs-claude-chat
+git clone https://github.com/iteam1/mkdocs-claude-chat
 cd mkdocs-claude-chat
 
 # Create venv

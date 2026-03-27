@@ -35,11 +35,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/mkdocs-claude-chat"
-Documentation = "https://your-org.github.io/mkdocs-claude-chat"
-Changelog = "https://your-org.github.io/mkdocs-claude-chat/changelog"
-Repository = "https://github.com/your-org/mkdocs-claude-chat"
-Issues = "https://github.com/your-org/mkdocs-claude-chat/issues"
+Homepage = "https://github.com/iteam1/mkdocs-claude-chat"
+Documentation = "https://iteam1.github.io/mkdocs-claude-chat"
+Changelog = "https://iteam1.github.io/mkdocs-claude-chat/changelog"
+Repository = "https://github.com/iteam1/mkdocs-claude-chat"
+Issues = "https://github.com/iteam1/mkdocs-claude-chat/issues"
 
 [project.entry-points."mkdocs.plugins"]
 claude-chat = "mkdocs_claude_chat:MkdocsClaudeChatPlugin"

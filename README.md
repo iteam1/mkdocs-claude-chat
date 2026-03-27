@@ -1,64 +1,63 @@
 # mkdocs-claude-chat
 
-MkDocs plugin to add a Claude-powered chatbot to your documentation site.
+MkDocs plugin that adds a Claude-powered chatbot to your documentation site.
 
-The chatbot uses the [`claude-agent-sdk`](https://github.com/anthropics/claude-agent-sdk-python)
-to answer questions about your documentation. Claude fetches content autonomously — checking
-[`/llms.txt`](https://llmstxt.org/) first if available, then falling back to WebFetch or WebSearch.
+Claude reads **your docs**, not the internet — it uses `llms.txt` to know every page, fetches only what's relevant, and streams a synthesized answer back word-by-word.
 
 ## Installation
 
 ```bash
-pip install mkdocs-claude-chat
+pip install mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
 ```
+
+`mkdocs-llmstxt` generates the `llms.txt` index that Claude uses as its docs map. Both plugins are designed to work as a pair.
+
+## Requirements
+
+- Python 3.10+
+- MkDocs 1.5+
+- **Claude Code CLI** installed and authenticated (`claude login`)
+
+The plugin drives Claude through `claude-agent-sdk`. No API keys or environment variables needed beyond a logged-in `claude` CLI.
 
 ## Usage
 
 ```yaml
 # mkdocs.yml
 plugins:
-  - claude-chat:
-      model: claude-sonnet-4-6
-      chat_title: "Ask Claude"
-      position: bottom-right
+  - search
+  - llmstxt:
+      full_output: llms-full.txt
+      sections:
+        Docs:
+          - "**"
+  - claude-chat
 ```
 
-Optionally add [`mkdocs-llmstxt`](https://github.com/pawamoy/mkdocs-llmstxt) to generate a `/llms.txt`
-index — Claude will use it automatically for faster, more accurate answers.
-
-## Requirements
-
-- The `claude` CLI must be installed and authenticated in the deployment environment.
+Run `mkdocs serve` — a chat button appears on every page.
 
 ## Configuration
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `enabled` | bool | `true` | Disable the plugin entirely |
-| `model` | str | `claude-opus-4-5` | Claude model for responses |
-| `system_prompt` | str | *(built-in)* | Custom system prompt |
-| `llmstxt_url` | str | *(auto from site_url)* | Hint to Claude: URL of the `/llms.txt` index |
-| `chat_title` | str | `Ask Claude` | Widget button label |
-| `position` | str | `bottom-right` | Widget position (`bottom-right` or `bottom-left`) |
+| `enabled` | bool | `true` | Disable the plugin entirely (useful for production builds) |
+| `model` | str | `claude-sonnet-4-6` | Claude model for responses |
+| `chat_title` | str | `Ask Claude` | Chat panel header text |
+| `position` | str | `bottom-right` | Button position (`bottom-right` or `bottom-left`) |
+| `llmstxt_url` | str | *(auto from site_url)* | Override the llms.txt URL |
+| `system_prompt` | str | *(built-in)* | Replace the built-in system prompt |
+| `backend_port` | int | `8001` | TCP port for the FastAPI chat server |
+| `session_ttl` | int | `7200` | Seconds of inactivity before a session is evicted |
+| `max_sessions` | int | `10` | Max simultaneous live Claude sessions |
 
-## Related to
+## How it works
 
-### MkDocs ecosystem
+1. `mkdocs-llmstxt` builds `site/llms.txt` — a structured index of every page
+2. `claude-chat` reads it from disk and embeds the full index in Claude's system prompt at session start
+3. Claude knows your entire docs structure before the first question
+4. For each question, Claude identifies all relevant pages, fetches them via `curl`, and synthesizes the answer
+5. You can watch each fetch happen live — tool calls appear as collapsible blocks in the chat panel
 
-- [**MkDocs**](https://www.mkdocs.org/) — Static site generator for project documentation ([GitHub](https://github.com/mkdocs/mkdocs))
-- [**MkDocs Catalog**](https://github.com/mkdocs/catalog) — Community catalog of MkDocs plugins and themes
-- [**mkdocstrings**](https://github.com/mkdocstrings/mkdocstrings) — Automatic API documentation generation from docstrings
-- [**mkdocs-llmstxt**](https://github.com/pawamoy/mkdocs-llmstxt) — Generates `/llms.txt` index files for AI consumption (optional, improves answer quality)
-- [**mkdocs-obsidian-interactive-graph-plugin**](https://daxcore.github.io/mkdocs-obsidian-interactive-graph-plugin/) — Interactive graph visualization for MkDocs
+## License
 
-### AI / Claude
-
-- [**claude-agent-sdk-python**](https://github.com/anthropics/claude-agent-sdk-python) — Official Python SDK for Claude agentic workflows (used by this plugin)
-
-### Development
-
-- [**spec-driven.md**](https://github.com/github/spec-kit/blob/main/spec-driven.md) — Spec-driven development methodology used to design this plugin
-
-### Templating
-
-- [**Jinja2**](https://jinja.palletsprojects.com/en/stable/) — Templating engine used internally by MkDocs
+ISC
