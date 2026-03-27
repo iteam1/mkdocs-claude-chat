@@ -43,16 +43,20 @@ plugins:
 | `chat_title` | str | `Ask Claude` | Widget button label |
 | `position` | str | `bottom-right` | Widget position (`bottom-right` or `bottom-left`) |
 
-## Related to
+## Related Projects
 
-https://github.com/mkdocs/mkdocs
+### MkDocs ecosystem
 
-https://www.mkdocs.org/
+- [**MkDocs**](https://www.mkdocs.org/) — Static site generator for project documentation ([GitHub](https://github.com/mkdocs/mkdocs))
+- [**MkDocs Catalog**](https://github.com/mkdocs/catalog) — Community catalog of MkDocs plugins and themes
+- [**mkdocstrings**](https://github.com/mkdocstrings/mkdocstrings) — Automatic API documentation generation from docstrings
+- [**mkdocs-llmstxt**](https://github.com/pawamoy/mkdocs-llmstxt) — Generates `/llms.txt` index files for AI consumption (required by this plugin)
+- [**mkdocs-obsidian-interactive-graph-plugin**](https://daxcore.github.io/mkdocs-obsidian-interactive-graph-plugin/) — Interactive graph visualization for MkDocs
 
-https://github.com/mkdocs/catalog
+### AI / Claude
 
-https://daxcore.github.io/mkdocs-obsidian-interactive-graph-plugin/
+- [**claude-agent-sdk-python**](https://github.com/anthropics/claude-agent-sdk-python) — Official Python SDK for Claude agentic workflows (used by this plugin)
 
-https://github.com/pawamoy/mkdocs-llmstxt
+### Templating
 
-https://github.com/mkdocstrings/mkdocstrings
+- [**Jinja2**](https://jinja.palletsprojects.com/en/stable/) — Templating engine used internally by MkDocs
