@@ -10,6 +10,12 @@ Claude reads **your docs**, not the internet — it uses `llms.txt` to know ever
 pip install mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
 ```
 
+Or with `uv`:
+
+```bash
+uv add mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
+```
+
 `mkdocs-llmstxt` generates the `llms.txt` index that Claude uses as its docs map. Both plugins are designed to work as a pair.
 
 ## Requirements
