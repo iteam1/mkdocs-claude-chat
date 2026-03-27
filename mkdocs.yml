@@ -1,9 +1,9 @@
-site_name: "mkdocs-claude-chat"
+site_name: "mkdocs-ask-claude"
 site_description: "MkDocs plugin to add a Claude-powered chatbot to your documentation site."
-site_url: "https://iteam1.github.io/mkdocs-claude-chat"
-repo_url: "https://github.com/iteam1/mkdocs-claude-chat"
+site_url: "https://iteam1.github.io/mkdocs-ask-claude"
+repo_url: "https://github.com/iteam1/mkdocs-ask-claude"
 
-watch: [mkdocs.yml, README.md, src/mkdocs_claude_chat]
+watch: [mkdocs.yml, README.md, src/mkdocs_ask_claude]
 
 validation:
   omitted_files: warn
@@ -76,6 +76,6 @@ plugins:
           - reference/architecture.md
         Troubleshooting:
           - troubleshooting.md
-  - claude-chat:  # dogfood
+  - ask-claude:  # dogfood
       model: claude-sonnet-4-6
 

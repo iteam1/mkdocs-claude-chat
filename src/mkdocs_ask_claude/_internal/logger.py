@@ -35,9 +35,9 @@ class _PluginLogger(logging.LoggerAdapter):
 
 
 def get_logger(name: str) -> _PluginLogger:
-    """Return a logger prefixed with ``claude-chat:`` for the given module name.
+    """Return a logger prefixed with ``ask-claude:`` for the given module name.
 
-    Writes to the ``mkdocs.plugins.claude-chat.<module>`` namespace so that
+    Writes to the ``mkdocs.plugins.ask-claude.<module>`` namespace so that
     MkDocs' existing log level and handler configuration applies automatically.
 
     Args:
@@ -53,5 +53,5 @@ def get_logger(name: str) -> _PluginLogger:
             _logger.debug("plugin initialised")
     """
     module = name.split(".")[-1] if name else "unknown"
-    logger = logging.getLogger(f"mkdocs.plugins.claude-chat.{module}")
-    return _PluginLogger("claude-chat", logger)
+    logger = logging.getLogger(f"mkdocs.plugins.ask-claude.{module}")
+    return _PluginLogger("ask-claude", logger)

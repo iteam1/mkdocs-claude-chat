@@ -7,7 +7,7 @@ A complete working MkDocs site with Claude chat in 5 minutes.
 ## Step 1 — Install
 
 ```bash
-pip install git+https://github.com/iteam1/mkdocs-claude-chat
+pip install git+https://github.com/iteam1/mkdocs-ask-claude
 pip install mkdocs-llmstxt
 ```
 
@@ -32,7 +32,7 @@ plugins:
       sections:
         Docs:
           - "**"          # index every page automatically
-  - claude-chat:
+  - ask-claude:
       chat_title: "Ask the docs"
 ```
 
@@ -55,17 +55,18 @@ Open [http://localhost:8000](http://localhost:8000) and click the chat button.
 When `mkdocs serve` starts:
 
 1. **`mkdocs-llmstxt` builds `site/llms.txt`** — a structured index listing every page URL and its description
-2. **`claude-chat` reads that file from disk** and embeds the full index into Claude's system prompt
-3. Claude now has a complete map of your docs **before the first message is sent**
+2. **`ask-claude` reads that file from disk** and embeds the full index into Claude's system prompt
+3. **A FastAPI backend starts on `http://localhost:8001`** — the widget sends questions here
+4. Claude now has a complete map of your docs **before the first message is sent**
 
 When a visitor asks a question:
 
-1. Claude scans the index it already has to identify relevant pages
-2. For complex questions, Claude identifies **multiple** relevant pages
-3. Each page is fetched via `curl` — you can watch this happen live in the chat panel as collapsible tool blocks
-4. Claude synthesizes the answer across all fetched pages and streams it back
-
-No URL configuration, no API keys, no webhooks. The only requirement is a logged-in `claude` CLI.
+1. The widget POSTs the question to `http://localhost:8001/chat` with a session ID
+2. The backend forwards the question to a dedicated `ClaudeSDKClient` worker for that session
+3. Claude scans the index it already has to identify relevant pages
+4. For complex questions, Claude identifies **multiple** relevant pages
+5. Each page is fetched via `Bash` (`curl`) or `WebFetch` — you can watch this happen live in the chat panel as collapsible tool blocks
+6. Claude synthesizes the answer across all fetched pages and streams it back as SSE
 
 ---
 
@@ -77,7 +78,7 @@ Here are some questions that exercise multi-page synthesis well:
 - *"What are all the configuration options and what do they do?"*
 - *"Walk me through how X works internally"*
 
-For these, Claude will fetch 3–6 pages and combine the answers — you will see each `curl` call appear in the chat as it happens.
+For these, Claude will fetch 3–6 pages and combine the answers — you will see each tool call appear in the chat as it happens.
 
 ---
 
@@ -85,10 +86,11 @@ For these, Claude will fetch 3–6 pages and combine the answers — you will se
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       chat_title: "Ask Claude"       # panel header text
       position: bottom-right         # or bottom-left
-      model: claude-sonnet-4-6       # or claude-opus-4-6 for harder questions
+      model: claude-sonnet-4-6       # default model
+      backend_port: 8001             # change if port is taken
 ```
 
 ### Custom CSS
@@ -117,7 +119,7 @@ The plugin is intended for local `mkdocs serve`. Disable it in CI or production 
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       enabled: !ENV [CLAUDE_CHAT_ENABLED, false]
 ```
 

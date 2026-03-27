@@ -8,19 +8,19 @@
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       enabled: true   # default — make sure it's not set to false
 ```
 
-**Check 2 — assets were copied**
+**Check 2 — backend started**
 
-Look for these lines in `mkdocs serve` output:
+Look for this line in `mkdocs serve` output:
 
 ```
-INFO    -  claude-chat: starting chat backend on http://localhost:8001
+INFO    -  ask-claude: starting chat backend on http://localhost:8001
 ```
 
-If missing, the `on_startup` hook did not fire. Make sure you are running `mkdocs serve`, not `mkdocs build`.
+If missing, the `on_startup` hook did not fire. Make sure you are running `mkdocs serve`, not `mkdocs build` — the backend only starts during `serve`.
 
 ---
 
@@ -43,11 +43,17 @@ curl http://localhost:8001/health
 ss -tlnp | grep 8001
 ```
 
-If another process is already on port 8001, kill it or configure a different port.
+If another process is already on port 8001, kill it or configure a different port:
+
+```yaml
+plugins:
+  - ask-claude:
+      backend_port: 8080
+```
 
 **Check 3 — stale process from a previous run**
 
-If you restarted `mkdocs serve` but an old backend is still holding port 8001:
+If you restarted `mkdocs serve` but an old backend is still holding the port:
 
 ```bash
 kill $(lsof -ti:8001)
@@ -61,18 +67,18 @@ Then restart `mkdocs serve`.
 
 **Symptom**: Claude says "I don't have specific documentation about..." or answers incorrectly.
 
-**Cause**: `llms-full.txt` / `llms.txt` is missing from the built site, so the backend has no docs to embed in the system prompt.
+**Cause**: `llms.txt` is missing from the built site directory, so the backend has nothing to embed in the system prompt.
 
-The backend reads docs **directly from disk** (no HTTP involved). Every build writes the file; every new chat session reads it fresh.
+The backend reads docs **directly from disk** (`site/llms.txt` and optionally `site/llms-full.txt`). Every build writes these files; every new session reads them fresh.
 
 **Check 1 — verify the file exists after build**
 
 ```bash
-ls site/llms-full.txt   # preferred (all docs in one file)
-ls site/llms.txt        # fallback index
+ls site/llms.txt         # index with page URLs and descriptions
+ls site/llms-full.txt    # optional: single file with all docs merged
 ```
 
-If neither file exists, the `mkdocs-llmstxt` plugin is not installed or not configured.
+If neither file exists, `mkdocs-llmstxt` is not installed or not configured.
 
 Install it:
 
@@ -80,7 +86,7 @@ Install it:
 pip install mkdocs-llmstxt
 ```
 
-Add to `mkdocs.yml`:
+Add to `mkdocs.yml` (before `ask-claude`):
 
 ```yaml
 plugins:
@@ -89,48 +95,28 @@ plugins:
       sections:
         Docs:
           - "**"
-  - claude-chat
+  - ask-claude
 ```
 
 **Check 2 — trigger a fresh chat session**
 
-Docs are embedded when a **new** session starts. Reload the page (new session ID) and ask your question again.
+Docs are embedded when a **new** session starts. The close button in the chat panel clears the session. Alternatively, open a new tab — each tab gets a fresh session ID.
 
 **Check 3 — check backend logs**
 
 Run `mkdocs serve` and look for:
 
 ```
-DEBUG   - claude-chat: loaded docs (NNNNN chars) from /path/to/site/llms-full.txt
+DEBUG   - ask-claude: system prompt built (NNNNN chars)
 ```
 
-If you see a warning instead (`no llms-full.txt or llms.txt found`), the file is missing from the build output.
-
----
-
-## Claude cannot fetch local URLs (`ECONNREFUSED`)
-
-**Symptom**: Claude explicitly says it cannot connect to `127.0.0.1:8000`.
-
-**Cause**: Claude runs in a sandboxed subprocess that cannot reach `localhost`. This is expected — the **plugin backend reads docs directly from the built site directory** on disk and injects them into Claude's system prompt, so Claude never needs localhost access.
-
-If you see this error, the docs content is already in Claude's context (embedded in the system prompt). The error appears only if Claude tries to fetch more pages on its own, which it should not need to do.
-
-**Check** that `llms-full.txt` or `llms.txt` is present in your site output directory after build:
-
-```bash
-ls $(mkdocs get-config site_dir)/llms-full.txt 2>/dev/null || echo "not found"
-# or:
-ls site/llms-full.txt
-```
-
-If neither file exists, the `mkdocs-llmstxt` plugin is not installed or not configured. See [Chatbot answers from general knowledge](#chatbot-answers-from-general-knowledge-instead-of-your-docs).
+A very short prompt (a few hundred chars) means the docs index was not found.
 
 ---
 
 ## Backend crashes on startup
 
-**Symptom**: `mkdocs serve` shows `claude-chat: chat backend crashed: ...`.
+**Symptom**: `mkdocs serve` shows `ask-claude: chat backend crashed: ...`.
 
 **Check 1 — missing dependencies**
 
@@ -149,7 +135,7 @@ claude login       # re-authenticate if needed
 
 ## `on_serve` hook never fires (MkDocs 1.6)
 
-This is a known MkDocs 1.6 issue — `on_serve` is registered but silently never called in some configurations. The plugin uses `on_startup(command='serve')` instead, which fires reliably.
+This is a known MkDocs 1.6 issue — `on_serve` is registered but silently never called in some configurations. The plugin uses `on_startup(command='serve')` instead, which fires reliably before the first build.
 
 No action needed — this is already handled internally.
 
@@ -157,9 +143,9 @@ No action needed — this is already handled internally.
 
 ## Widget panel does not push page content aside
 
-**Symptom**: The chat panel overlaps the page content instead of shifting it.
+**Symptom**: The chat panel overlaps the page content instead of shifting it left.
 
-**Cause**: Your theme applies `overflow: hidden` or `position: fixed` to the body or main container, which prevents `margin-right` from working.
+**Cause**: Your theme applies `overflow: hidden` or `position: fixed` to the `body` or main container, which prevents `margin-right` from working.
 
 **Fix**: Add extra CSS to your site:
 
@@ -185,7 +171,7 @@ By design — the resize handle is hidden on screens narrower than 480px and the
 
 ## `llmstxt_url` auto-detection is wrong
 
-If `site_url` in `mkdocs.yml` has a path (e.g. `https://org.github.io/my-project`), the plugin derives:
+If `site_url` in `mkdocs.yml` has a sub-path (e.g. `https://org.github.io/my-project`), the plugin derives:
 
 ```
 http://127.0.0.1:8000/my-project/llms.txt   # during serve
@@ -196,6 +182,8 @@ If your setup differs, set it explicitly:
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       llmstxt_url: http://127.0.0.1:8000/llms.txt
 ```
+
+Note: this URL is only used as a reference in the system prompt's fallback instructions. The backend always reads `llms.txt` directly from disk.

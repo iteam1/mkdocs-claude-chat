@@ -1,10 +1,10 @@
-"""Tests for mkdocs_claude_chat._internal.assets."""
+"""Tests for mkdocs_ask_claude._internal.assets."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from mkdocs_claude_chat._internal.assets import copy_to_site, register
+from mkdocs_ask_claude._internal.assets import copy_to_site, register
 
 
 def test_register_appends_css() -> None:

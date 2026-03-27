@@ -9,8 +9,8 @@ from unittest.mock import patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-import mkdocs_claude_chat._internal.server as srv
-from mkdocs_claude_chat._internal.server import _build_system_prompt, app
+import mkdocs_ask_claude._internal.server as srv
+from mkdocs_ask_claude._internal.server import _build_system_prompt, app
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ async def test_chat_returns_sse_content_type() -> None:
         yield f"data: {json.dumps({'text': 'Hi'})}\n\n"
         yield "data: [DONE]\n\n"
 
-    with patch("mkdocs_claude_chat._internal.server._stream_claude", _mock):
+    with patch("mkdocs_ask_claude._internal.server._stream_claude", _mock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/chat", json={"question": "hi"})
 
@@ -51,7 +51,7 @@ async def test_chat_stream_contains_text_chunks() -> None:
         yield f"data: {json.dumps({'text': 'Hello world'})}\n\n"
         yield "data: [DONE]\n\n"
 
-    with patch("mkdocs_claude_chat._internal.server._stream_claude", _mock):
+    with patch("mkdocs_ask_claude._internal.server._stream_claude", _mock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/chat", json={"question": "hi"})
 
@@ -66,7 +66,7 @@ async def test_chat_stream_ends_with_done() -> None:
         yield f"data: {json.dumps({'text': 'answer'})}\n\n"
         yield "data: [DONE]\n\n"
 
-    with patch("mkdocs_claude_chat._internal.server._stream_claude", _mock):
+    with patch("mkdocs_ask_claude._internal.server._stream_claude", _mock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/chat", json={"question": "hi"})
 
@@ -79,7 +79,7 @@ async def test_chat_error_event_format() -> None:
         yield f"data: {json.dumps({'error': 'boom'})}\n\n"
         yield "data: [DONE]\n\n"
 
-    with patch("mkdocs_claude_chat._internal.server._stream_claude", _mock):
+    with patch("mkdocs_ask_claude._internal.server._stream_claude", _mock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/chat", json={"question": "fail"})
 
@@ -96,7 +96,7 @@ async def test_chat_tool_call_event_forwarded() -> None:
         yield f"data: {json.dumps({'tool_call': tc})}\n\n"
         yield "data: [DONE]\n\n"
 
-    with patch("mkdocs_claude_chat._internal.server._stream_claude", _mock):
+    with patch("mkdocs_ask_claude._internal.server._stream_claude", _mock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/chat", json={"question": "hi"})
 

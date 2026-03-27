@@ -1,4 +1,4 @@
-/* mkdocs-claude-chat widget styles */
+/* mkdocs-ask-claude widget styles */
 
 /* ── Custom properties ───────────────────────────────────────────── */
 :root {
@@ -21,7 +21,7 @@
 }
 
 /* ── Circle button ───────────────────────────────────────────────── */
-#claude-chat-btn {
+#ask-claude-btn {
   position: fixed;
   width: var(--cc-btn-size);
   height: var(--cc-btn-size);
@@ -41,17 +41,17 @@
   touch-action: none;
 }
 
-#claude-chat-btn:hover {
+#ask-claude-btn:hover {
   background: var(--cc-primary-hover);
   box-shadow: 0 6px 20px rgba(91, 110, 225, 0.55);
 }
 
-#claude-chat-btn.dragging {
+#ask-claude-btn.dragging {
   cursor: grabbing;
   box-shadow: 0 8px 24px rgba(91, 110, 225, 0.6);
 }
 
-#claude-chat-btn svg {
+#ask-claude-btn svg {
   width: 24px;
   height: 24px;
   pointer-events: none;
@@ -69,7 +69,7 @@ body.cc-resizing {
 }
 
 /* ── Chat panel ──────────────────────────────────────────────────── */
-#claude-chat-panel {
+#ask-claude-panel {
   position: fixed;
   top: 0;
   right: 0;
@@ -86,12 +86,12 @@ body.cc-resizing {
   overflow: hidden;
 }
 
-#claude-chat-panel.open {
+#ask-claude-panel.open {
   transform: translateX(0);
 }
 
 /* ── Resize handle ───────────────────────────────────────────────── */
-#claude-chat-resize {
+#ask-claude-resize {
   position: absolute;
   top: 0;
   left: 0;
@@ -103,8 +103,8 @@ body.cc-resizing {
   transition: background 0.15s ease;
 }
 
-#claude-chat-resize:hover,
-#claude-chat-resize.resizing {
+#ask-claude-resize:hover,
+#ask-claude-resize.resizing {
   background: var(--cc-primary);
   opacity: 0.35;
 }
@@ -456,12 +456,12 @@ body.cc-resizing {
 
 /* ── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  #claude-chat-panel {
+  #ask-claude-panel {
     width: 100vw !important;
     border-left: none;
   }
 
-  #claude-chat-resize {
+  #ask-claude-resize {
     display: none;
   }
 

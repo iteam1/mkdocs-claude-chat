@@ -4,7 +4,7 @@
 
 ### 1. Claude Code CLI
 
-The plugin uses Claude through the `claude` CLI. If you already use Claude Code, you are done. Otherwise:
+The plugin uses Claude through the `claude` CLI via `claude-agent-sdk`. If you already use Claude Code, you are done. Otherwise:
 
 1. Download and install from **[claude.ai/code](https://claude.ai/code)**
 2. Log in:
@@ -33,21 +33,21 @@ pip install mkdocs
 
 ## Install the plugins
 
-`mkdocs-claude-chat` and `mkdocs-llmstxt` are designed to work as a pair:
+`mkdocs-ask-claude` and `mkdocs-llmstxt` are designed to work as a pair:
 
 - **`mkdocs-llmstxt`** generates `site/llms.txt` — a structured index of every page in your docs
-- **`mkdocs-claude-chat`** reads that index and gives it to Claude, so Claude knows your entire docs structure before the first question
+- **`mkdocs-ask-claude`** reads that index from disk and embeds it into Claude's system prompt so Claude knows your entire docs structure before the first question
 
 Install the plugin:
 
 ```bash
-pip install git+https://github.com/iteam1/mkdocs-claude-chat
+pip install git+https://github.com/iteam1/mkdocs-ask-claude
 ```
 
 Or with `uv`:
 
 ```bash
-uv pip install git+https://github.com/iteam1/mkdocs-claude-chat
+uv pip install git+https://github.com/iteam1/mkdocs-ask-claude
 ```
 
 Install the companion plugin that generates `llms.txt`:
@@ -66,22 +66,22 @@ Minimal configuration:
 plugins:
   - search
   - llmstxt
-  - claude-chat
+  - ask-claude
 ```
 
-> **Order matters** — `llmstxt` must come before `claude-chat` so the index is built before the chat backend reads it.
+> **Order matters** — `llmstxt` must come before `ask-claude` so the index is written before the chat backend reads it at serve time.
 
-If you want to include all pages in the index automatically:
+If you want to include all pages in the index automatically and also generate a merged single-file fallback:
 
 ```yaml
 plugins:
   - search
   - llmstxt:
-      full_output: llms-full.txt   # also write a single merged file (fallback)
+      full_output: llms-full.txt   # also write a single merged file (fallback for Claude)
       sections:
         Docs:
           - "**"                   # include every .md file
-  - claude-chat
+  - ask-claude
 ```
 
 ---
@@ -95,7 +95,7 @@ mkdocs serve
 You should see:
 
 ```
-INFO    -  claude-chat: starting chat backend on http://localhost:8001
+INFO    -  ask-claude: starting chat backend on http://localhost:8001
 INFO    -  Building documentation...
 INFO    -  Serving on http://127.0.0.1:8000/
 ```
@@ -103,11 +103,13 @@ INFO    -  Serving on http://127.0.0.1:8000/
 Open your browser — a floating chat button appears at the bottom-right corner of every page.
 
 Send a question. Claude will:
-1. Check its embedded `llms.txt` index (already in context — no fetch needed)
-2. Fetch the relevant pages via `curl`
-3. Stream a synthesized answer
 
-You can watch step 2 happen in real time — each `curl` call appears as a collapsible tool block in the chat panel.
+1. Use the embedded `llms.txt` index (already in its system prompt — no fetch needed)
+2. Identify the relevant pages
+3. Fetch them via `curl` or `WebFetch`
+4. Stream a synthesized answer
+
+You can watch step 3 happen in real time — each tool call appears as a collapsible block in the chat panel.
 
 ---
 

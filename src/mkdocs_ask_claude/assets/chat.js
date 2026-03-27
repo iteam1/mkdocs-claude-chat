@@ -1,4 +1,4 @@
-/* mkdocs-claude-chat widget */
+/* mkdocs-ask-claude widget */
 (function () {
   "use strict";
 
@@ -112,7 +112,7 @@
   // ── DOM builders ──────────────────────────────────────────────────
   function createButton() {
     const el = document.createElement("button");
-    el.id = "claude-chat-btn";
+    el.id = "ask-claude-btn";
     el.setAttribute("aria-label", "Open chat");
     el.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -123,11 +123,11 @@
 
   function createPanel() {
     const el = document.createElement("div");
-    el.id = "claude-chat-panel";
+    el.id = "ask-claude-panel";
     el.setAttribute("role", "dialog");
     el.setAttribute("aria-label", cfg.chatTitle);
     el.innerHTML = `
-      <div id="claude-chat-resize" aria-hidden="true"></div>
+      <div id="ask-claude-resize" aria-hidden="true"></div>
       <div class="cc-header">
         <span class="cc-title">${escapeHtml(cfg.chatTitle)}</span>
         <button class="cc-close" aria-label="Close chat">
@@ -629,7 +629,7 @@
     messagesEl    = panel.querySelector(".cc-messages");
     inputEl       = panel.querySelector(".cc-input");
     sendEl        = panel.querySelector(".cc-send");
-    resizeHandle  = panel.querySelector("#claude-chat-resize");
+    resizeHandle  = panel.querySelector("#ask-claude-resize");
 
     // Apply initial button position
     applyButtonPosition();

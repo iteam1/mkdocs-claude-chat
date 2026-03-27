@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from mkdocs.config.defaults import MkDocsConfig
 
-from mkdocs_claude_chat._internal.plugin import MkdocsClaudeChatPlugin
+from mkdocs_ask_claude._internal.plugin import MkdocsAskClaudePlugin
 
 
 def _make_config(tmp_path: Path, **plugin_opts: object) -> MkDocsConfig:
@@ -20,7 +20,7 @@ def _make_config(tmp_path: Path, **plugin_opts: object) -> MkDocsConfig:
         "site_url": "https://example.org/",
         "site_dir": str(tmp_path / "site"),
         "docs_dir": str(docs_dir),
-        "plugins": {"claude-chat": plugin_opts},
+        "plugins": {"ask-claude": plugin_opts},
     })
     errors, warnings = conf.validate()
     assert not errors, errors
@@ -31,7 +31,7 @@ def _make_config(tmp_path: Path, **plugin_opts: object) -> MkDocsConfig:
 
 def test_on_config_registers_assets(tmp_path: Path) -> None:
     conf = _make_config(tmp_path)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     assert "assets/chat.css" in conf["extra_css"]
     assert "assets/chat.js" in conf["extra_javascript"]
@@ -39,21 +39,21 @@ def test_on_config_registers_assets(tmp_path: Path) -> None:
 
 def test_on_config_derives_llmstxt_url(tmp_path: Path) -> None:
     conf = _make_config(tmp_path)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     assert plugin._llmstxt_url == "https://example.org/llms.txt"
 
 
 def test_on_config_uses_explicit_llmstxt_url(tmp_path: Path) -> None:
     conf = _make_config(tmp_path, llmstxt_url="https://custom.example.com/llms.txt")
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     assert plugin._llmstxt_url == "https://custom.example.com/llms.txt"
 
 
 def test_on_config_disabled_returns_none(tmp_path: Path) -> None:
     conf = _make_config(tmp_path, enabled=False)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     result = plugin.on_config(conf)
     assert result is None
     assert "assets/chat.css" not in conf["extra_css"]
@@ -63,7 +63,7 @@ def test_on_config_disabled_returns_none(tmp_path: Path) -> None:
 
 def test_on_post_build_copies_assets(tmp_path: Path) -> None:
     conf = _make_config(tmp_path)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     plugin.on_post_build(config=conf)
     assert (tmp_path / "site" / "assets" / "chat.css").exists()
@@ -72,7 +72,7 @@ def test_on_post_build_copies_assets(tmp_path: Path) -> None:
 
 def test_on_post_build_disabled_no_copy(tmp_path: Path) -> None:
     conf = _make_config(tmp_path, enabled=False)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_post_build(config=conf)
     assert not (tmp_path / "site" / "assets" / "chat.css").exists()
 
@@ -81,7 +81,7 @@ def test_on_post_build_disabled_no_copy(tmp_path: Path) -> None:
 
 def test_on_page_context_injects_config(tmp_path: Path) -> None:
     conf = _make_config(tmp_path)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     context: dict = {}
     plugin.on_page_context(context, page=object(), config=conf)  # type: ignore[arg-type]
@@ -95,7 +95,7 @@ def test_on_page_context_injects_config(tmp_path: Path) -> None:
 
 def test_on_page_context_disabled_returns_none(tmp_path: Path) -> None:
     conf = _make_config(tmp_path, enabled=False)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     context: dict = {}
     result = plugin.on_page_context(context, page=object(), config=conf)  # type: ignore[arg-type]
     assert result is None
@@ -109,7 +109,7 @@ _SAMPLE_HTML = "<html><body><p>Hello</p></body></html>"
 
 def test_on_post_page_injects_script(tmp_path: Path) -> None:
     conf = _make_config(tmp_path)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     result = plugin.on_post_page(_SAMPLE_HTML, page=object(), config=conf)  # type: ignore[arg-type]
     assert result is not None
@@ -120,7 +120,7 @@ def test_on_post_page_injects_script(tmp_path: Path) -> None:
 
 def test_on_post_page_disabled_returns_none(tmp_path: Path) -> None:
     conf = _make_config(tmp_path, enabled=False)
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     result = plugin.on_post_page(_SAMPLE_HTML, page=object(), config=conf)  # type: ignore[arg-type]
     assert result is None
 
@@ -129,7 +129,7 @@ def test_on_post_page_config_values(tmp_path: Path) -> None:
     import json
 
     conf = _make_config(tmp_path, chat_title="My Docs Chat")
-    plugin: MkdocsClaudeChatPlugin = conf.plugins["claude-chat"]
+    plugin: MkdocsAskClaudePlugin = conf.plugins["ask-claude"]
     plugin.on_config(conf)
     result = plugin.on_post_page(_SAMPLE_HTML, page=object(), config=conf)  # type: ignore[arg-type]
     assert result is not None

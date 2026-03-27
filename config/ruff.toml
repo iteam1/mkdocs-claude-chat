@@ -58,7 +58,7 @@ docstring-quotes = "double"
 ban-relative-imports = "all"
 
 [lint.isort]
-known-first-party = ["mkdocs_claude_chat"]
+known-first-party = ["mkdocs_ask_claude"]
 
 [lint.pydocstyle]
 convention = "google"

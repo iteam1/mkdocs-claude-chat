@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 
 from mkdocs.plugins import BasePlugin
 
-from mkdocs_claude_chat._internal import assets, server
-from mkdocs_claude_chat._internal.config import _PluginConfig
-from mkdocs_claude_chat._internal.logger import get_logger
+from mkdocs_ask_claude._internal import assets, server
+from mkdocs_ask_claude._internal.config import _PluginConfig
+from mkdocs_ask_claude._internal.logger import get_logger
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 _logger = get_logger(__name__)
 
 
-class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
+class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
     """MkDocs plugin that injects a Claude-powered chatbot widget into every page."""
 
     _llmstxt_url: str
@@ -46,7 +46,7 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
             self._llmstxt_url = self.config.llmstxt_url.rstrip("/")
         elif self._is_serving:
             # During `mkdocs serve`, use the local dev server address.
-            # Preserve the path component from site_url (e.g. /mkdocs-claude-chat/)
+            # Preserve the path component from site_url (e.g. /mkdocs-ask-claude/)
             # because MkDocs dev server mirrors that path structure.
             from urllib.parse import urlparse  # noqa: PLC0415
             dev_addr = config.get("dev_addr") or "127.0.0.1:8000"

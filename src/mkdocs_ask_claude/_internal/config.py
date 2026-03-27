@@ -7,7 +7,7 @@ from mkdocs.config.base import Config
 
 
 class _PluginConfig(Config):
-    """Configuration options for mkdocs-claude-chat."""
+    """Configuration options for mkdocs-ask-claude."""
 
     enabled = mkconf.Type(bool, default=True)
     model = mkconf.Type(str, default="claude-sonnet-4-6")

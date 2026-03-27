@@ -7,13 +7,13 @@ Claude reads **your docs**, not the internet — it uses `llms.txt` to know ever
 ## Installation
 
 ```bash
-pip install git+https://github.com/iteam1/mkdocs-claude-chat
+pip install git+https://github.com/iteam1/mkdocs-ask-claude
 ```
 
 Or with `uv`:
 
 ```bash
-uv pip install git+https://github.com/iteam1/mkdocs-claude-chat
+uv pip install git+https://github.com/iteam1/mkdocs-ask-claude
 ```
 
 For the best experience, also install [`mkdocs-llmstxt`](https://github.com/pawamoy/mkdocs-llmstxt) — it generates the `llms.txt` index that Claude uses as its docs map:
@@ -41,7 +41,7 @@ plugins:
       sections:
         Docs:
           - "**"
-  - claude-chat
+  - ask-claude
 ```
 
 Run `mkdocs serve` — a chat button appears on every page.
@@ -63,7 +63,7 @@ Run `mkdocs serve` — a chat button appears on every page.
 ## How it works
 
 1. `mkdocs-llmstxt` builds `site/llms.txt` — a structured index of every page
-2. `claude-chat` reads it from disk and embeds the full index in Claude's system prompt at session start
+2. `ask-claude` reads it from disk and embeds the full index in Claude's system prompt at session start
 3. Claude knows your entire docs structure before the first question
 4. For each question, Claude identifies all relevant pages, fetches them via `curl`, and synthesizes the answer
 5. You can watch each fetch happen live — tool calls appear as collapsible blocks in the chat panel

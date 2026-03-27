@@ -33,7 +33,7 @@ from claude_agent_sdk import (
     UserMessage,
 )
 
-from mkdocs_claude_chat._internal.logger import get_logger
+from mkdocs_ask_claude._internal.logger import get_logger
 
 _logger = get_logger(__name__)
 
@@ -71,7 +71,7 @@ def configure(
     _session_ttl = session_ttl
     _max_sessions = max_sessions
     _logger.info(
-        "claude-chat: docs dir → %s  llmstxt → %s  port=%d  ttl=%ds  max_sessions=%d",
+        "ask-claude: docs dir → %s  llmstxt → %s  port=%d  ttl=%ds  max_sessions=%d",
         site_dir, llmstxt_url, backend_port, session_ttl, max_sessions,
     )
 
@@ -384,7 +384,7 @@ class ChatRequest(BaseModel):
     session_id: str = ""
 
 
-app = FastAPI(title="mkdocs-claude-chat server", docs_url=None, redoc_url=None)
+app = FastAPI(title="mkdocs-ask-claude server", docs_url=None, redoc_url=None)
 
 app.add_middleware(
     CORSMiddleware,

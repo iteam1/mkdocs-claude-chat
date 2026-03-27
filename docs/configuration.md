@@ -1,12 +1,12 @@
 # Configuration
 
-All options go under `plugins: claude-chat:` in `mkdocs.yml`.
+All options go under `plugins: ask-claude:` in `mkdocs.yml`.
 
 ## Full example
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       enabled: true
       model: claude-sonnet-4-6
       chat_title: "Ask Claude"
@@ -30,7 +30,7 @@ Set to `false` to disable the plugin entirely — no assets are injected, no ser
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       enabled: !ENV [CLAUDE_CHAT_ENABLED, true]
 ```
 
@@ -42,11 +42,11 @@ plugins:
 |---|---|
 | `str` | `"claude-sonnet-4-6"` |
 
-The Claude model used for answering questions. The model name is passed to the `claude-agent-sdk`.
+The Claude model name passed to `claude-agent-sdk` for answering questions.
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       model: claude-opus-4-6    # more capable, slower
 ```
 
@@ -62,7 +62,7 @@ Text displayed in the chat panel header.
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       chat_title: "Ask the docs"
 ```
 
@@ -74,13 +74,11 @@ plugins:
 |---|---|
 | `str` | `"bottom-right"` |
 
-Initial position of the floating chat button. Accepted values: `bottom-right`, `bottom-left`.
-
-The button can also be dragged to any position by the user — this overrides the configured default for the current session.
+Initial position of the floating chat button. The button can also be dragged to any position by the user — the drag position overrides this setting for the current page load.
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       position: bottom-left
 ```
 
@@ -92,19 +90,18 @@ plugins:
 |---|---|
 | `str` | `""` (auto-derived) |
 
-URL of the site's [`llms.txt`](https://llmstxt.org/) index. Claude uses this file to discover and fetch relevant documentation sections before answering.
+URL of the site's [`llms.txt`](https://llmstxt.org/) index. This value is embedded in each page's `window.__CLAUDE_CHAT_CONFIG__` and sent to the backend by the widget, but the **backend reads the actual docs directly from disk** — the URL is only used as a reference in the built-in system prompt's fallback instructions.
 
-**Auto-detection**: if left empty and `site_url` is set in `mkdocs.yml`, the plugin derives:
+**Auto-detection**: if left empty:
 
-```
-llmstxt_url = <site_url>/llms.txt
-```
+- During `mkdocs serve`: derived from `dev_addr` + `site_url` path, e.g. `http://127.0.0.1:8000/llms.txt`
+- During `mkdocs build`: derived from `site_url`, e.g. `https://example.com/llms.txt`
 
-Set explicitly when your `llms.txt` lives at a different path, or when serving locally without a `site_url`:
+Set explicitly when your setup differs:
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       llmstxt_url: https://docs.example.com/llms.txt
 ```
 
@@ -116,18 +113,21 @@ plugins:
 |---|---|
 | `str` | `""` (built-in prompt used) |
 
-Override the system prompt sent to Claude. The built-in prompt instructs Claude to:
+Override the system prompt sent to Claude at the start of every new session. When set, the built-in prompt is **replaced entirely** — the `llms.txt` index is not automatically embedded.
 
-1. Use the embedded `llms.txt` index (already in context) to identify all relevant pages
-2. Fetch each relevant page via `curl` before answering — even for simple questions
-3. For complex questions, fetch multiple pages and synthesize across them
-4. Fall back to `llms-full.txt` grep or web search only if `curl` is unreachable
+The built-in prompt (used when this option is empty):
 
-Use this to add domain-specific instructions:
+1. Reads `llms.txt` from disk and embeds the full index at the top of the prompt
+2. Instructs Claude to identify all relevant pages from the index
+3. Fetches each relevant page via `curl <url>/index.md` before answering
+4. For complex questions, fetches multiple pages and synthesizes across them
+5. Falls back to `llms-full.txt` grep if `curl` is unreachable
+
+Use this option to add domain-specific instructions instead of the built-in documentation assistant behaviour:
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       system_prompt: |
         You are a helpful assistant for Acme Corp's internal API docs.
         Always recommend the v2 API endpoints over deprecated v1 ones.
@@ -146,11 +146,11 @@ TCP port the FastAPI chat server listens on. Change this if port `8001` is alrea
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       backend_port: 8080
 ```
 
-The widget automatically sends requests to `http://localhost:<backend_port>` — no other config change needed.
+The widget automatically sends requests to `http://localhost:<backend_port>/chat` — no other config change needed.
 
 ---
 
@@ -160,13 +160,13 @@ The widget automatically sends requests to `http://localhost:<backend_port>` —
 |---|---|
 | `int` | `7200` |
 
-Seconds of inactivity before a chat session is evicted from memory. When a session is evicted, the next message from that browser starts a fresh Claude conversation (the UI history is still shown, but Claude's memory resets).
+Seconds of inactivity before a chat session is evicted from memory. When a session is evicted, the next message from that browser starts a fresh Claude conversation (the UI history stored in `sessionStorage` is still shown, but Claude's conversation memory resets).
 
-Lower this to free up resources on shared machines; raise it for long documentation review sessions.
+Lower this value to free up resources; raise it for longer documentation review sessions.
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       session_ttl: 3600   # 1 hour
 ```
 
@@ -178,11 +178,11 @@ plugins:
 |---|---|
 | `int` | `10` |
 
-Maximum number of simultaneous live Claude sessions (i.e. concurrent `claude` CLI processes). When the limit is reached, the oldest idle session is evicted to make room.
+Maximum number of simultaneous live Claude sessions (concurrent `ClaudeSDKClient` worker tasks). When the limit is reached, the oldest idle session is evicted to make room.
 
 ```yaml
 plugins:
-  - claude-chat:
+  - ask-claude:
       max_sessions: 5    # stricter limit on low-memory machines
 ```
 

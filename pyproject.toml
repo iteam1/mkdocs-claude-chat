@@ -3,7 +3,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [project]
-name = "mkdocs-claude-chat"
+name = "mkdocs-ask-claude"
 description = "MkDocs plugin to add a Claude-powered chatbot to your documentation site."
 license = "ISC"
 license-files = ["LICENSE"]
@@ -35,14 +35,14 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/iteam1/mkdocs-claude-chat"
-Documentation = "https://iteam1.github.io/mkdocs-claude-chat"
-Changelog = "https://iteam1.github.io/mkdocs-claude-chat/changelog"
-Repository = "https://github.com/iteam1/mkdocs-claude-chat"
-Issues = "https://github.com/iteam1/mkdocs-claude-chat/issues"
+Homepage = "https://github.com/iteam1/mkdocs-ask-claude"
+Documentation = "https://iteam1.github.io/mkdocs-ask-claude"
+Changelog = "https://iteam1.github.io/mkdocs-ask-claude/changelog"
+Repository = "https://github.com/iteam1/mkdocs-ask-claude"
+Issues = "https://github.com/iteam1/mkdocs-ask-claude/issues"
 
 [project.entry-points."mkdocs.plugins"]
-claude-chat = "mkdocs_claude_chat:MkdocsClaudeChatPlugin"
+ask-claude = "mkdocs_ask_claude:MkdocsAskClaudePlugin"
 
 [tool.pdm.version]
 source = "call"
@@ -83,7 +83,7 @@ docs = [
     "markdown-callouts>=0.4",
     "markdown-exec>=1.8",
     "mkdocs>=1.6",
-    "mkdocs-claude-chat",  # dogfood
+    "mkdocs-ask-claude",  # dogfood
     "mkdocs-coverage>=1.0",
     "mkdocs-kroki-plugin>=1.3",
     "mkdocs-llmstxt>=0.2",

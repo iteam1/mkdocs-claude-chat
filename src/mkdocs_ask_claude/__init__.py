@@ -1,12 +1,12 @@
-"""mkdocs-claude-chat package.
+"""mkdocs-ask-claude package.
 
 MkDocs plugin to add a Claude-powered chatbot to your documentation site.
 """
 
 from __future__ import annotations
 
-from mkdocs_claude_chat._internal.plugin import MkdocsClaudeChatPlugin
+from mkdocs_ask_claude._internal.plugin import MkdocsAskClaudePlugin
 
 __all__: list[str] = [
-    "MkdocsClaudeChatPlugin",
+    "MkdocsAskClaudePlugin",
 ]
