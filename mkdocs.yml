@@ -34,6 +34,7 @@ theme:
 
 markdown_extensions:
   - attr_list
+  - md_in_html
   - admonition
   - pymdownx.superfences
   - pymdownx.tabbed:
@@ -55,15 +56,25 @@ plugins:
             show_root_heading: true
   - llmstxt:
       sections:
-        Usage:
+        Getting Started:
           - index.md
-        API reference:
+          - getting-started/installation.md
+          - getting-started/quickstart.md
+        Configuration:
+          - configuration.md
+        Reference:
           - reference/api.md
+          - reference/architecture.md
   - claude-chat:  # dogfood
       model: claude-sonnet-4-6
 
 nav:
   - Home: index.md
-  - API: api.md
+  - Getting Started:
+    - getting-started/installation.md
+    - getting-started/quickstart.md
+  - Configuration: configuration.md
   - Reference:
-    - reference/api.md
+    - API: reference/api.md
+    - Architecture: reference/architecture.md
+  - Contributing: contributing.md
