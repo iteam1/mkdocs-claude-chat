@@ -12,6 +12,8 @@ When a user asks a question and a documentation URL is available:
 - Python 3.10+ + stdlib `logging` only — no new packages (001-logger-adapter)
 - Python 3.10+ + `shutil`, `pathlib` (stdlib only) — no new packages (002-assets-injection)
 - Filesystem — reads from package `assets/`, writes to `site_dir/assets/` (002-assets-injection)
+- Python 3.10+ + `mkdocs>=1.5`, `logger.py` (001), `assets.py` (002) — no new packages (003-plugin-hooks)
+- N/A (reads config, writes to template context) (003-plugin-hooks)
 
 ## Recent Changes
 - 001-logger-adapter: Added Python 3.10+ + stdlib `logging` only — no new packages
