@@ -30,6 +30,8 @@ dependencies = [
     "mkdocs>=1.5",
     "claude-agent-sdk>=0.1.50",
     "anyio>=4.0",
+    "fastapi>=0.100",
+    "uvicorn>=0.27",
 ]
 
 [project.urls]
