@@ -45,10 +45,14 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
         if self.config.llmstxt_url:
             self._llmstxt_url = self.config.llmstxt_url.rstrip("/")
         elif self._is_serving:
-            # During `mkdocs serve` use the local dev server address so Claude
-            # can actually fetch the llms.txt that was just built.
+            # During `mkdocs serve`, use the local dev server address.
+            # Preserve the path component from site_url (e.g. /mkdocs-claude-chat/)
+            # because MkDocs dev server mirrors that path structure.
+            from urllib.parse import urlparse  # noqa: PLC0415
             dev_addr = config.get("dev_addr") or "127.0.0.1:8000"
-            self._llmstxt_url = f"http://{dev_addr}/llms.txt"
+            site_url = (config.get("site_url") or "").rstrip("/")
+            site_path = urlparse(site_url).path.rstrip("/") if site_url else ""
+            self._llmstxt_url = f"http://{dev_addr}{site_path}/llms.txt"
         else:
             site_url = (config.get("site_url") or "").rstrip("/")
             self._llmstxt_url = f"{site_url}/llms.txt" if site_url else ""
