@@ -1,4 +1,4 @@
-# mkdocs-claude-chat
+# mkdocs-ask-claude
 
 MkDocs plugin that adds a Claude-powered chatbot to your documentation site.
 
