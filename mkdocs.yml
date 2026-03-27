@@ -77,13 +77,3 @@ plugins:
   - claude-chat:  # dogfood
       model: claude-sonnet-4-6
 
-nav:
-  - Home: index.md
-  - Getting Started:
-    - getting-started/installation.md
-    - getting-started/quickstart.md
-  - Configuration: configuration.md
-  - Reference:
-    - API: reference/api.md
-    - Architecture: reference/architecture.md
-  - Contributing: contributing.md
