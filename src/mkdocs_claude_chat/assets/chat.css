@@ -17,6 +17,7 @@
   --cc-error-text: #991b1b;
   --cc-radius: 14px;
   --cc-btn-size: 56px;
+  --cc-panel-width: 360px;
 }
 
 /* ── Circle button ───────────────────────────────────────────────── */
@@ -56,12 +57,23 @@
   pointer-events: none;
 }
 
+/* ── Page content shift when panel is open ───────────────────────── */
+body.cc-panel-open {
+  margin-right: var(--cc-panel-width) !important;
+  transition: margin-right 0.25s ease;
+}
+
+body.cc-resizing {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
 /* ── Chat panel ──────────────────────────────────────────────────── */
 #claude-chat-panel {
   position: fixed;
   top: 0;
   right: 0;
-  width: 360px;
+  width: var(--cc-panel-width);
   height: 100vh;
   background: var(--cc-bg);
   border-left: 1px solid var(--cc-border);
@@ -76,6 +88,25 @@
 
 #claude-chat-panel.open {
   transform: translateX(0);
+}
+
+/* ── Resize handle ───────────────────────────────────────────────── */
+#claude-chat-resize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10000;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+#claude-chat-resize:hover,
+#claude-chat-resize.resizing {
+  background: var(--cc-primary);
+  opacity: 0.35;
 }
 
 /* ── Panel header ────────────────────────────────────────────────── */
@@ -256,7 +287,15 @@
 /* ── Mobile ──────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   #claude-chat-panel {
-    width: 100vw;
+    width: 100vw !important;
     border-left: none;
+  }
+
+  #claude-chat-resize {
+    display: none;
+  }
+
+  body.cc-panel-open {
+    margin-right: 0 !important;
   }
 }

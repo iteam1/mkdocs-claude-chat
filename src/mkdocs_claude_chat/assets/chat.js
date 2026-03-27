@@ -8,10 +8,16 @@
     window.__CLAUDE_CHAT_CONFIG__ || {}
   );
 
+  // ── Constants ─────────────────────────────────────────────────────
+  const PANEL_MIN_W = 260;
+  const PANEL_MAX_W = () => Math.round(window.innerWidth * 0.85);
+  const STORAGE_KEY = "cc-panel-width";
+
   // ── State ─────────────────────────────────────────────────────────
   let panelOpen = false;
+  let panelWidth = parseInt(localStorage.getItem(STORAGE_KEY) || "360", 10);
 
-  // Drag state
+  // Button drag state
   let buttonX = window.innerWidth - 28 - 16;   // center X (28 = half of 56px btn)
   let buttonY = window.innerHeight - 28 - 16;  // center Y
   let isDragging = false;
@@ -19,8 +25,13 @@
   let dragStartY = 0;
   let dragMoved = false;
 
+  // Panel resize state
+  let isResizing = false;
+  let resizeStartX = 0;
+  let resizeStartW = 0;
+
   // DOM refs (set in init)
-  let btn, panel, messagesEl, inputEl, sendEl, loadingEl;
+  let btn, panel, resizeHandle, messagesEl, inputEl, sendEl, loadingEl;
 
   // ── Helpers ───────────────────────────────────────────────────────
   function clampPosition(x, y) {
@@ -43,6 +54,22 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function applyPanelWidth(w, animate) {
+    panelWidth = Math.max(PANEL_MIN_W, Math.min(PANEL_MAX_W(), w));
+    if (!animate) {
+      panel.style.transition = "none";
+      document.body.style.transition = "none";
+    }
+    document.documentElement.style.setProperty("--cc-panel-width", panelWidth + "px");
+    if (!animate) {
+      // force reflow then restore transitions
+      void panel.offsetWidth;
+      panel.style.transition = "";
+      document.body.style.transition = "";
+    }
+    localStorage.setItem(STORAGE_KEY, panelWidth);
+  }
+
   // ── DOM builders ──────────────────────────────────────────────────
   function createButton() {
     const el = document.createElement("button");
@@ -61,6 +88,7 @@
     el.setAttribute("role", "dialog");
     el.setAttribute("aria-label", cfg.chatTitle);
     el.innerHTML = `
+      <div id="claude-chat-resize" aria-hidden="true"></div>
       <div class="cc-header">
         <span class="cc-title">${escapeHtml(cfg.chatTitle)}</span>
         <button class="cc-close" aria-label="Close chat">
@@ -90,10 +118,12 @@
     panelOpen = !panelOpen;
     if (panelOpen) {
       panel.classList.add("open");
+      document.body.classList.add("cc-panel-open");
       btn.setAttribute("aria-label", "Close chat");
       inputEl.focus();
     } else {
       panel.classList.remove("open");
+      document.body.classList.remove("cc-panel-open");
       btn.setAttribute("aria-label", "Open chat");
     }
   }
@@ -253,6 +283,31 @@
     }
   }
 
+  // ── Resize handlers ───────────────────────────────────────────────
+  function onResizeDown(e) {
+    e.preventDefault();
+    isResizing = true;
+    resizeStartX = e.clientX;
+    resizeStartW = panelWidth;
+    resizeHandle.classList.add("resizing");
+    document.body.classList.add("cc-resizing");
+    resizeHandle.setPointerCapture(e.pointerId);
+  }
+
+  function onResizeMove(e) {
+    if (!isResizing) return;
+    const dx = resizeStartX - e.clientX;   // dragging left → panel grows
+    applyPanelWidth(resizeStartW + dx, false);
+  }
+
+  function onResizeUp(e) {
+    if (!isResizing) return;
+    isResizing = false;
+    resizeHandle.classList.remove("resizing");
+    document.body.classList.remove("cc-resizing");
+    resizeHandle.releasePointerCapture(e.pointerId);
+  }
+
   // ── Init ──────────────────────────────────────────────────────────
   function init() {
     btn = createButton();
@@ -261,17 +316,26 @@
     document.body.appendChild(btn);
     document.body.appendChild(panel);
 
-    messagesEl = panel.querySelector(".cc-messages");
-    inputEl    = panel.querySelector(".cc-input");
-    sendEl     = panel.querySelector(".cc-send");
+    messagesEl    = panel.querySelector(".cc-messages");
+    inputEl       = panel.querySelector(".cc-input");
+    sendEl        = panel.querySelector(".cc-send");
+    resizeHandle  = panel.querySelector("#claude-chat-resize");
 
     // Apply initial button position
     applyButtonPosition();
 
-    // Pointer events for drag + tap
+    // Apply saved panel width
+    applyPanelWidth(panelWidth, false);
+
+    // Pointer events for button drag + tap
     btn.addEventListener("pointerdown", onPointerDown);
     btn.addEventListener("pointermove", onPointerMove);
     btn.addEventListener("pointerup",   onPointerUp);
+
+    // Pointer events for panel resize
+    resizeHandle.addEventListener("pointerdown", onResizeDown);
+    resizeHandle.addEventListener("pointermove", onResizeMove);
+    resizeHandle.addEventListener("pointerup",   onResizeUp);
 
     // Close button
     panel.querySelector(".cc-close").addEventListener("click", togglePanel);
