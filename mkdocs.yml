@@ -74,6 +74,8 @@ plugins:
         Reference:
           - reference/api.md
           - reference/architecture.md
+        Troubleshooting:
+          - troubleshooting.md
   - claude-chat:  # dogfood
       model: claude-sonnet-4-6
 
