@@ -11,14 +11,25 @@
   // ── Constants ─────────────────────────────────────────────────────
   const PANEL_MIN_W = 260;
   const PANEL_MAX_W = () => Math.round(window.innerWidth * 0.85);
-  const STORAGE_KEY = "cc-panel-width";
+  const STORAGE_KEY    = "cc-panel-width";
+  const SESSION_KEY    = "cc-session-id";
+  const HISTORY_KEY    = "cc-chat-history";
+  const HISTORY_MAX    = 60;     // max stored messages
+  const TOOL_OUT_MAX   = 600;    // max chars of tool output to store
 
   // ── State ─────────────────────────────────────────────────────────
   let panelOpen = false;
   let panelWidth = parseInt(localStorage.getItem(STORAGE_KEY) || "360", 10);
 
-  // Unique ID for this browser session — maintains conversation history on server.
-  const sessionId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+  // Session ID — persisted in sessionStorage so page navigation keeps the same Claude conversation.
+  function _newId() { return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); }
+  let sessionId = sessionStorage.getItem(SESSION_KEY) || (() => {
+    const id = _newId(); sessionStorage.setItem(SESSION_KEY, id); return id;
+  })();
+
+  // Chat history — persisted in sessionStorage for UI restoration across page loads.
+  let chatHistory = [];
+  let _pendingToolHistory = {};   // tool_use id → index in chatHistory
 
   // Button drag state
   let buttonX = window.innerWidth - 28 - 16;   // center X (28 = half of 56px btn)
@@ -71,6 +82,31 @@
       document.body.style.transition = "";
     }
     localStorage.setItem(STORAGE_KEY, panelWidth);
+  }
+
+  // ── Session & history helpers ─────────────────────────────────────
+  function saveHistory() {
+    try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(chatHistory.slice(-HISTORY_MAX))); } catch (_) {}
+  }
+
+  function loadHistory() {
+    try { return JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]"); } catch (_) { return []; }
+  }
+
+  function addToHistory(entry) {
+    chatHistory.push(entry);
+    saveHistory();
+  }
+
+  function clearSession() {
+    sessionId = _newId();
+    sessionStorage.setItem(SESSION_KEY, sessionId);
+    sessionStorage.removeItem(HISTORY_KEY);
+    chatHistory = [];
+    _pendingToolHistory = {};
+    if (messagesEl) {
+      messagesEl.innerHTML = '<p class="cc-welcome">Ask a question about this documentation. Claude will answer using the docs as context.</p>';
+    }
   }
 
   // ── DOM builders ──────────────────────────────────────────────────
@@ -303,6 +339,9 @@
       outputEl: wrap.querySelector(".cc-tool-output"),
       statusEl: wrap.querySelector(".cc-tool-status"),
     };
+    const histIdx = chatHistory.length;
+    addToHistory({ type: "tool", name: name, command: command, output: null, isError: false });
+    _pendingToolHistory[id] = histIdx;
   }
 
   function updateToolResult(id, output, isError) {
@@ -314,6 +353,14 @@
       block.outputEl.textContent = trimmed.length > 2000 ? trimmed.slice(0, 2000) + "\n…(truncated)" : trimmed;
     } else {
       block.outputEl.style.display = "none";
+    }
+    // update history entry
+    const histIdx = _pendingToolHistory[id];
+    if (histIdx !== undefined) {
+      chatHistory[histIdx].output = trimmed.slice(0, TOOL_OUT_MAX);
+      chatHistory[histIdx].isError = isError;
+      delete _pendingToolHistory[id];
+      saveHistory();
     }
     scrollToBottom();
   }
@@ -330,6 +377,7 @@
     bubble.textContent = text;
     messagesEl.appendChild(bubble);
     scrollToBottom();
+    if (role === "user") addToHistory({ type: "user", text: text });
     return bubble;
   }
 
@@ -399,7 +447,8 @@
 
     let streamBubble = null;
     let rawText = "";
-    _toolBlocks = {};  // reset tool blocks for this message
+    _toolBlocks = {};          // reset tool blocks for this message
+    _pendingToolHistory = {};  // reset pending tool history entries
 
     try {
       for await (const payload of streamResponse(question)) {
@@ -439,13 +488,68 @@
       hideLoading();
       // render accumulated markdown once streaming is done
       if (streamBubble && rawText) {
-        streamBubble.innerHTML = renderMarkdown(rawText);
+        const html = renderMarkdown(rawText);
+        streamBubble.innerHTML = html;
+        addToHistory({ type: "assistant", html: html });
         scrollToBottom();
       }
       inputEl.disabled = false;
       sendEl.disabled = false;
       inputEl.focus();
     }
+  }
+
+  // ── History restoration ───────────────────────────────────────────
+  function _restoreToolBlock(entry) {
+    const wrap = document.createElement("div");
+    wrap.className = "cc-tool-call";
+    const statusClass = entry.isError ? "error" : (entry.output !== null ? "done" : "");
+    const label = entry.name === "Bash" ? (entry.command ? truncateCmd(entry.command) : "bash") :
+                  entry.name === "WebFetch" ? (entry.command || "fetch") :
+                  entry.name === "WebSearch" ? (entry.command || "search") : entry.name;
+    wrap.innerHTML =
+      '<div class="cc-tool-header">' +
+        '<span class="cc-tool-status ' + statusClass + '"></span>' +
+        '<span class="cc-tool-label">' + escapeHtml(label) + '</span>' +
+        '<span class="cc-tool-toggle">▸</span>' +
+      '</div>' +
+      '<div class="cc-tool-body" style="display:none">' +
+        (entry.command ? '<pre class="cc-tool-cmd">' + escapeHtml(entry.command) + '</pre>' : '') +
+        (entry.output ? '<pre class="cc-tool-output">' + escapeHtml(entry.output) + '</pre>' : '') +
+      '</div>';
+    const header = wrap.querySelector(".cc-tool-header");
+    const body   = wrap.querySelector(".cc-tool-body");
+    const toggle = wrap.querySelector(".cc-tool-toggle");
+    header.addEventListener("click", function () {
+      const open = body.style.display !== "none";
+      body.style.display = open ? "none" : "";
+      toggle.textContent = open ? "▸" : "▾";
+    });
+    messagesEl.appendChild(wrap);
+  }
+
+  function restoreHistory() {
+    chatHistory = loadHistory();
+    if (!chatHistory.length) return;
+    // Remove welcome message before restoring
+    const welcome = messagesEl.querySelector(".cc-welcome");
+    if (welcome) welcome.remove();
+    for (const entry of chatHistory) {
+      if (entry.type === "user") {
+        const b = document.createElement("div");
+        b.className = "cc-bubble-user";
+        b.textContent = entry.text;
+        messagesEl.appendChild(b);
+      } else if (entry.type === "assistant") {
+        const b = document.createElement("div");
+        b.className = "cc-bubble-assistant";
+        b.innerHTML = entry.html;
+        messagesEl.appendChild(b);
+      } else if (entry.type === "tool") {
+        _restoreToolBlock(entry);
+      }
+    }
+    scrollToBottom();
   }
 
   // ── Drag handlers ─────────────────────────────────────────────────
@@ -533,6 +637,9 @@
     // Apply saved panel width
     applyPanelWidth(panelWidth, false);
 
+    // Restore chat history from previous page visits
+    restoreHistory();
+
     // Pointer events for button drag + tap
     btn.addEventListener("pointerdown", onPointerDown);
     btn.addEventListener("pointermove", onPointerMove);
@@ -543,8 +650,11 @@
     resizeHandle.addEventListener("pointermove", onResizeMove);
     resizeHandle.addEventListener("pointerup",   onResizeUp);
 
-    // Close button
-    panel.querySelector(".cc-close").addEventListener("click", togglePanel);
+    // Close button — ends the session (clears history) and closes the panel
+    panel.querySelector(".cc-close").addEventListener("click", function () {
+      clearSession();
+      if (panelOpen) togglePanel();
+    });
 
     // Send on button click
     sendEl.addEventListener("click", sendMessage);
