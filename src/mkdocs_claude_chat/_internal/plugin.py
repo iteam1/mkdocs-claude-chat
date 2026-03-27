@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import threading
 from typing import TYPE_CHECKING
 
 from mkdocs.plugins import BasePlugin
 
-from mkdocs_claude_chat._internal import assets
+from mkdocs_claude_chat._internal import assets, server
 from mkdocs_claude_chat._internal.config import _PluginConfig
 from mkdocs_claude_chat._internal.logger import get_logger
 
@@ -99,6 +100,24 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
             "system_prompt": self.config.system_prompt or "",
         }
         return context
+
+    def on_serve(self, server_obj: object, *, config: MkDocsConfig, builder: object, **kwargs: object) -> None:
+        """Start the chat backend server when ``mkdocs serve`` is invoked.
+
+        Launches the FastAPI sidecar on port 8001 in a daemon thread so it
+        stops automatically when the MkDocs serve process exits.
+
+        Args:
+            server_obj: The MkDocs LiveReloadServer instance (unused).
+            config: The global MkDocs configuration object.
+            builder: The MkDocs builder callable (unused).
+            **kwargs: Accepted for forward-compatibility with future MkDocs versions.
+        """
+        if not self.config.enabled:
+            return
+        _logger.info("starting chat backend on port 8001")
+        t = threading.Thread(target=server.run, daemon=True)
+        t.start()
 
     def on_post_page(
         self,
