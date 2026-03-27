@@ -1,34 +1,37 @@
 # mkdocs-claude-chat
 
-**A MkDocs plugin that adds a Claude-powered chatbot to your documentation site.**
+**Add a Claude-powered chatbot to your MkDocs site — Claude reads YOUR docs, not the internet.**
 
-Readers can ask questions in natural language and get accurate, streamed answers — Claude reads your docs through `llms.txt` so answers stay in context.
+Visitors ask questions in natural language. Claude fetches the relevant pages from your own documentation, synthesizes the answer, and streams it back word-by-word.
 
 ---
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A([Browser widget]) -->|POST /chat| B([FastAPI sidecar\nport 8001])
-    B -->|claude-agent-sdk| C([Claude])
-    C -->|1. reads| D[(llms.txt\nindex)]
-    C -->|2. fetches| E[(doc pages)]
-    C -->|3. streams answer| B
-    B -->|SSE chunks| A
+```
+User asks a question
+      │
+      ▼
+Chat widget  →  FastAPI sidecar  →  Claude (via claude-agent-sdk)
+                                         │
+                              reads llms.txt page index
+                              fetches relevant doc pages
+                              synthesizes answer across pages
+                                         │
+                              streams answer back  ←─────────┘
 ```
 
-1. The plugin injects a floating chat button into every page
-2. When a visitor asks a question, it's sent to a local FastAPI server (port 8001)
-3. Claude reads your `/llms.txt` index and fetches relevant doc pages
-4. The answer streams back word-by-word into the chat panel
+1. `mkdocs-llmstxt` builds `site/llms.txt` — a structured index of every page in your docs
+2. `claude-chat` embeds that index in Claude's system prompt at session start
+3. Claude knows your entire docs structure before the first question
+4. For each question, Claude identifies the relevant pages, fetches them, and synthesizes a complete answer
 
 ---
 
 ## Quick install
 
 ```bash
-pip install mkdocs-claude-chat
+pip install mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
 ```
 
 Add to `mkdocs.yml`:
@@ -36,6 +39,7 @@ Add to `mkdocs.yml`:
 ```yaml
 plugins:
   - search
+  - llmstxt
   - claude-chat
 ```
 
@@ -45,51 +49,39 @@ Run:
 mkdocs serve
 ```
 
-That's it. A chat button appears at the bottom-right of every page.
+A chat button appears on every page. Claude already knows your docs — no URL, no API key, no extra configuration.
 
 ---
 
 ## Requirements
 
-| Requirement | Details |
+| Requirement | Notes |
 |---|---|
-| Python | 3.10+ |
-| MkDocs | 1.5+ |
-| Claude CLI | Must be installed and authenticated (`claude --version`) |
+| Python 3.10+ | |
+| MkDocs 1.5+ | `pip install mkdocs` |
+| Claude Code CLI | Install from [claude.ai/code](https://claude.ai/code), then `claude login` |
 
-The plugin shells out to the `claude` CLI via `claude-agent-sdk`. No API key configuration needed if the CLI is already set up.
+The plugin drives Claude through the `claude-agent-sdk`. As long as the `claude` CLI is authenticated on your machine, it just works.
 
 ---
 
 ## Features
 
-- **Streamed answers** — text appears as Claude types, no waiting
+- **Reads your docs** — Claude uses `llms.txt` to know every page, fetches only what's relevant
+- **Multi-page synthesis** — for complex questions Claude fetches several pages and combines the answer
+- **Streamed answers** — text appears as Claude writes it
+- **Live tool call feed** — see which pages Claude is fetching in real time, collapsible
+- **Persistent session** — conversation survives page navigation within the same tab
 - **Draggable widget** — move the chat button anywhere on screen
-- **`llms.txt` aware** — Claude uses your documentation index as its knowledge source
-- **Zero layout shift** — the widget overlays your docs without affecting layout
-- **Theme-customizable** — CSS custom properties for colors and radius
-- **Works with any MkDocs theme** — no template overrides required
+- **Resizable panel** — drag the left edge to adjust width
+- **No layout shift** — the panel overlays your docs without reflowing content
+- **Theme-neutral** — works with Material, ReadTheDocs, MkDocs default, or any custom theme
 
 ---
 
 ## Next steps
 
-<div class="grid cards" markdown>
-
-- :material-rocket-launch: **[Quick Start](getting-started/quickstart.md)**
-
-    Get your first Claude-powered chat working in 5 minutes.
-
-- :material-cog: **[Configuration](configuration.md)**
-
-    All plugin options — model, position, title, custom system prompt.
-
-- :material-api: **[API Reference](reference/api.md)**
-
-    Chat server endpoints and SSE streaming protocol.
-
-- :material-source-branch: **[Architecture](reference/architecture.md)**
-
-    How the plugin modules fit together.
-
-</div>
+- **[Installation →](getting-started/installation.md)** — full setup with prerequisites
+- **[Quick Start →](getting-started/quickstart.md)** — working chat in 5 minutes
+- **[Configuration →](configuration.md)** — model, title, position, custom system prompt
+- **[Troubleshooting →](troubleshooting.md)** — common issues and fixes

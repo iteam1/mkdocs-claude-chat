@@ -1,37 +1,82 @@
 # Quick Start
 
-Get a Claude-powered chat widget running on your MkDocs site in under 5 minutes.
+A complete working MkDocs site with Claude chat in 5 minutes.
 
-## 1. Install
+---
+
+## Step 1 — Install
 
 ```bash
-pip install mkdocs-claude-chat
+pip install mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
 ```
 
-## 2. Enable the plugin
+Make sure the Claude CLI is logged in:
 
-Edit your `mkdocs.yml`:
+```bash
+claude login      # only needed once
+claude --version  # confirm
+```
+
+---
+
+## Step 2 — Configure mkdocs.yml
 
 ```yaml
 site_name: My Docs
+
 plugins:
   - search
-  - claude-chat
+  - llmstxt:
+      full_output: llms-full.txt
+      sections:
+        Docs:
+          - "**"          # index every page automatically
+  - claude-chat:
+      chat_title: "Ask the docs"
 ```
 
-## 3. Serve
+That is the complete configuration. Everything else is automatic.
+
+---
+
+## Step 3 — Serve
 
 ```bash
 mkdocs serve
 ```
 
-Open [http://localhost:8000](http://localhost:8000) — you'll see a **chat button** in the bottom-right corner.
+Open [http://localhost:8000](http://localhost:8000) and click the chat button.
 
-## 4. Ask a question
+---
 
-Click the button, type a question about your documentation, and press **Enter**.
+## What happens automatically
 
-Claude reads your docs and streams an answer back word-by-word.
+When `mkdocs serve` starts:
+
+1. **`mkdocs-llmstxt` builds `site/llms.txt`** — a structured index listing every page URL and its description
+2. **`claude-chat` reads that file from disk** and embeds the full index into Claude's system prompt
+3. Claude now has a complete map of your docs **before the first message is sent**
+
+When a visitor asks a question:
+
+1. Claude scans the index it already has to identify relevant pages
+2. For complex questions, Claude identifies **multiple** relevant pages
+3. Each page is fetched via `curl` — you can watch this happen live in the chat panel as collapsible tool blocks
+4. Claude synthesizes the answer across all fetched pages and streams it back
+
+No URL configuration, no API keys, no webhooks. The only requirement is a logged-in `claude` CLI.
+
+---
+
+## Trying it out
+
+Here are some questions that exercise multi-page synthesis well:
+
+- *"How do I get started with this project end-to-end?"*
+- *"What are all the configuration options and what do they do?"*
+- *"Walk me through how X works internally"*
+
+For these, Claude will fetch 3–6 pages and combine the answers — you will see each `curl` call appear in the chat as it happens.
 
 ---
 
@@ -40,49 +85,44 @@ Claude reads your docs and streams an answer back word-by-word.
 ```yaml
 plugins:
   - claude-chat:
-      chat_title: "Ask the docs"
-      position: bottom-right        # or bottom-left
-      model: claude-sonnet-4-6
+      chat_title: "Ask Claude"       # panel header text
+      position: bottom-right         # or bottom-left
+      model: claude-sonnet-4-6       # or claude-opus-4-6 for harder questions
 ```
 
-## Point Claude at your llms.txt
+### Custom CSS
 
-If your site has an `llms.txt` index (e.g. via `mkdocs-llmstxt`), tell the plugin:
+The widget uses CSS custom properties. Add an extra stylesheet to restyle it:
+
+```css
+/* docs/stylesheets/extra.css */
+:root {
+  --cc-primary: #0066cc;
+  --cc-bg: #ffffff;
+  --cc-radius: 10px;
+}
+```
+
+```yaml
+extra_css:
+  - stylesheets/extra.css
+```
+
+---
+
+## Disable in production
+
+The plugin is intended for local `mkdocs serve`. Disable it in CI or production builds with an environment variable:
 
 ```yaml
 plugins:
   - claude-chat:
-      llmstxt_url: https://your-site.example.com/llms.txt
+      enabled: !ENV [CLAUDE_CHAT_ENABLED, false]
 ```
 
-Claude will use it as the primary knowledge source before falling back to web search.
-
-If `llmstxt_url` is not set and your `mkdocs.yml` has a `site_url`, the plugin auto-derives it as `<site_url>/llms.txt`.
-
----
-
-## What happens behind the scenes
-
-```mermaid
-sequenceDiagram
-    participant MkDocs as mkdocs serve
-    participant Plugin as claude-chat plugin
-    participant Browser
-    participant Server as FastAPI :8001
-    participant Claude
-
-    MkDocs->>Plugin: on_startup(command='serve')
-    Plugin->>Server: start sidecar thread
-    MkDocs->>Plugin: on_post_page (each page)
-    Plugin->>Browser: inject chat.js + chat.css + config
-
-    Browser->>Browser: chat button appears
-    Browser->>Server: POST /chat {question}
-    Server->>Claude: claude-agent-sdk query
-    Claude->>Claude: fetch llms.txt → fetch doc pages
-    Claude-->>Server: answer chunks
-    Server-->>Browser: SSE stream
-    Browser->>Browser: render answer word-by-word
+```bash
+CLAUDE_CHAT_ENABLED=true mkdocs serve   # enable locally
+mkdocs build                            # disabled by default
 ```
 
 ---
@@ -90,5 +130,4 @@ sequenceDiagram
 ## Next steps
 
 - [All configuration options →](../configuration.md)
-- [Chat server API →](../reference/api.md)
-- [Architecture →](../reference/architecture.md)
+- [Troubleshooting →](../troubleshooting.md)

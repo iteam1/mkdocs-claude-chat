@@ -115,9 +115,10 @@ plugins:
 
 Override the system prompt sent to Claude. The built-in prompt instructs Claude to:
 
-1. Check `llms.txt` for an index
-2. Traverse links to find relevant sections
-3. Fall back to WebFetch / WebSearch if no `llms.txt`
+1. Use the embedded `llms.txt` index (already in context) to identify all relevant pages
+2. Fetch each relevant page via `curl` before answering — even for simple questions
+3. For complex questions, fetch multiple pages and synthesize across them
+4. Fall back to `llms-full.txt` grep or web search only if `curl` is unreachable
 
 Use this to add domain-specific instructions:
 
