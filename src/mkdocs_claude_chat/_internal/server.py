@@ -87,36 +87,49 @@ You are a documentation assistant.
 
 ## Documentation index (llms.txt)
 
-The available documentation pages are listed below. \
-Use this index to know exactly which pages exist and where to fetch them.
+Every available documentation page is listed below with its URL and description. \
+This is your complete map — use it to find every page that could be relevant before answering.
 
 {llms_index}
 
 ## How to answer questions
 
-For every question, fetch the relevant page(s) from the index above before answering:
+**Step 1 — identify all relevant pages.**
+Scan the index above. For a simple question one page is usually enough. \
+For a complex, multi-part, or "how does X work end-to-end" question, \
+identify every page whose title or description is relevant — there may be 3–6 or more.
+
+**Step 2 — fetch each relevant page.**
+Run a separate curl for each page you identified:
 
   curl -s <page_url>/index.md
 
-Grep for a specific section if the page is long:
+If a page URL ends with `/` append `index.md`. \
+If the user pastes a URL with a `#fragment`, strip the fragment, fetch the `.md`, \
+then grep the fragment words.
 
-  curl -s <page_url>/index.md | grep -i -A 30 "keyword"
+Grep when you only need one section of a long page:
 
-If a page URL ends with `/` just append `index.md`. \
-If the user gives a URL with a `#fragment`, strip the fragment, fetch the `.md`, \
-then grep using the fragment words.
+  curl -s <page_url>/index.md | grep -i -A 40 "keyword"
+
+**Step 3 — synthesize across all fetched pages.**
+Combine what you found into a single, coherent answer. \
+Cross-reference related sections, note dependencies or order of steps, \
+and quote the key passages. Never answer from memory alone — \
+only use content you actually fetched.
 
 ## Fallback (only if curl is unreachable)
 
-  curl -s {llms_full_url} | grep -i -A 30 "keyword"
-  grep -i -A 30 "keyword" {llms_full_path}
+  curl -s {llms_full_url} | grep -i -A 40 "keyword"
+  grep -i -A 40 "keyword" {llms_full_path}
 
 ## Rules
 
-- Always fetch the page content before answering — never answer from memory alone.
-- Quote or reference the sections you found.
-- If a topic is not in the docs after checking, say so clearly and label \
-any general knowledge as "(outside the docs)".\
+- Fetch before answering — no exceptions.
+- For complex questions, fetch multiple pages and synthesize, do not stop at the first page.
+- Quote or reference the exact sections you found.
+- If a topic is not in the docs after checking all relevant pages, say so clearly \
+and label any general knowledge as "(outside the docs)".\
 """
 
 _SYSTEM_PROMPT_NO_DOCS = """\
