@@ -12,16 +12,16 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Verify `src/mkdocs_claude_chat/_internal/server.py` exists as a stub
-- [ ] T002 Install `httpx` into the venv for async test client: `uv pip install httpx --python .venv/bin/python`
+- [x] T001 Verify `src/mkdocs_claude_chat/_internal/server.py` exists as a stub
+- [x] T002 Install `httpx` into the venv for async test client: `uv pip install httpx --python .venv/bin/python`
 
 ---
 
 ## Phase 2: Foundational
 
-- [ ] T003 Add module-level imports (`fastapi`, `uvicorn`, `anyio`, `claude_agent_sdk`), `_logger`, and the `ChatRequest` Pydantic model to `src/mkdocs_claude_chat/_internal/server.py`
-- [ ] T004 Implement `_build_system_prompt(llmstxt_url: str) -> str` that returns the prompt with the llmstxt hint or fallback text in `src/mkdocs_claude_chat/_internal/server.py`
-- [ ] T005 Create the FastAPI `app` instance and add `CORSMiddleware` with `allow_origins=["*"]` in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T003 Add module-level imports (`fastapi`, `uvicorn`, `anyio`, `claude_agent_sdk`), `_logger`, and the `ChatRequest` Pydantic model to `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T004 Implement `_build_system_prompt(llmstxt_url: str) -> str` that returns the prompt with the llmstxt hint or fallback text in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T005 Create the FastAPI `app` instance and add `CORSMiddleware` with `allow_origins=["*"]` in `src/mkdocs_claude_chat/_internal/server.py`
 
 **Checkpoint**: App skeleton ready — user story implementation can begin.
 
@@ -33,9 +33,9 @@
 
 **Independent Test**: `POST /chat` with `{ "question": "hi", "llmstxt_url": "" }` → `content-type: text/event-stream`, stream ends with `data: [DONE]`.
 
-- [ ] T006 [US1] Implement `_stream_claude(question, llmstxt_url)` async generator that runs `ClaudeSDKClient`, yields `data: {"text": "..."}` SSE chunks, and yields `data: [DONE]` at the end in `src/mkdocs_claude_chat/_internal/server.py`
-- [ ] T007 [US1] Implement `POST /chat` route that validates `ChatRequest` and returns `StreamingResponse(_stream_claude(...), media_type="text/event-stream")` in `src/mkdocs_claude_chat/_internal/server.py`
-- [ ] T008 [US1] Add error handling in `_stream_claude` — on exception yield `data: {"error": "..."}` then `data: [DONE]` in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T006 [US1] Implement `_stream_claude(question, llmstxt_url)` async generator that runs `ClaudeSDKClient`, yields `data: {"text": "..."}` SSE chunks, and yields `data: [DONE]` at the end in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T007 [US1] Implement `POST /chat` route that validates `ChatRequest` and returns `StreamingResponse(_stream_claude(...), media_type="text/event-stream")` in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T008 [US1] Add error handling in `_stream_claude` — on exception yield `data: {"error": "..."}` then `data: [DONE]` in `src/mkdocs_claude_chat/_internal/server.py`
 
 **Checkpoint**: Streaming chat endpoint complete — US1 done.
 
@@ -47,9 +47,9 @@
 
 **Independent Test**: `GET /health` → 200 OK.
 
-- [ ] T009 [US2] Implement `GET /health` route returning `{"status": "ok"}` in `src/mkdocs_claude_chat/_internal/server.py`
-- [ ] T010 [US2] Implement `run(port: int = 8001) -> None` that calls `uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")` in `src/mkdocs_claude_chat/_internal/server.py`
-- [ ] T011 [US2] Add Google-style docstrings to all public functions and the `ChatRequest` model in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T009 [US2] Implement `GET /health` route returning `{"status": "ok"}` in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T010 [US2] Implement `run(port: int = 8001) -> None` that calls `uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")` in `src/mkdocs_claude_chat/_internal/server.py`
+- [x] T011 [US2] Add Google-style docstrings to all public functions and the `ChatRequest` model in `src/mkdocs_claude_chat/_internal/server.py`
 
 **Checkpoint**: Both endpoints complete — US1 and US2 done.
 
@@ -57,7 +57,7 @@
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T012 [P] Write unit tests in `tests/test_server.py` using `httpx.AsyncClient(app=app)` — mock `ClaudeSDKClient` to avoid real CLI calls — covering: health 200, chat SSE stream, `[DONE]` sentinel, 422 on missing body, system prompt with/without llmstxt_url
+- [x] T012 [P] Write unit tests in `tests/test_server.py` using `httpx.AsyncClient(app=app)` — mock `ClaudeSDKClient` to avoid real CLI calls — covering: health 200, chat SSE stream, `[DONE]` sentinel, 422 on missing body, system prompt with/without llmstxt_url
 
 ---
 
