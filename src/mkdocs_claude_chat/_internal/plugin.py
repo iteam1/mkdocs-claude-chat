@@ -78,7 +78,13 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
         assets.copy_to_site(config["site_dir"])
         _logger.debug("copied chat assets to site_dir")
         if self._is_serving:
-            server.configure(config["site_dir"], self._llmstxt_url)
+            server.configure(
+                config["site_dir"],
+                self._llmstxt_url,
+                backend_port=self.config.backend_port,
+                session_ttl=self.config.session_ttl,
+                max_sessions=self.config.max_sessions,
+            )
 
     def on_page_context(
         self,
@@ -126,7 +132,7 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
         if command != "serve" or not self.config.enabled:
             return
         self._is_serving = True
-        _logger.info("starting chat backend on http://localhost:8001")
+        _logger.info("starting chat backend on http://localhost:%d", self.config.backend_port)
 
         def _run() -> None:
             try:
@@ -165,7 +171,7 @@ class MkdocsClaudeChatPlugin(BasePlugin[_PluginConfig]):
             return None
 
         cfg = {
-            "backendUrl": "http://localhost:8001",
+            "backendUrl": f"http://localhost:{self.config.backend_port}",
             "llmstxtUrl": self._llmstxt_url,
             "chatTitle": self.config.chat_title,
             "position": self.config.position,

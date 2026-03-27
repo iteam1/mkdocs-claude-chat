@@ -40,24 +40,40 @@ _logger = get_logger(__name__)
 # ── Server config (set by plugin after each build) ────────────────────────────
 _site_dir: str = ""
 _llmstxt_url: str = ""   # HTTP URL of llms.txt, e.g. http://127.0.0.1:8000/site/llms.txt
+_backend_port: int = 8001
+_session_ttl: int = 7200
+_max_sessions: int = 10
 
 
-def configure(site_dir: str, llmstxt_url: str = "") -> None:
+def configure(
+    site_dir: str,
+    llmstxt_url: str = "",
+    *,
+    backend_port: int = 8001,
+    session_ttl: int = 7200,
+    max_sessions: int = 10,
+) -> None:
     """Tell the server where docs live and how to reach llms.txt over HTTP.
 
     Called by the MkDocs plugin after each build.
 
     Args:
         site_dir: Absolute path to the MkDocs build output directory.
-            Used as the local file fallback when HTTP is unavailable.
-        llmstxt_url: Full HTTP URL of ``llms.txt``, e.g.
-            ``http://127.0.0.1:8000/my-site/llms.txt``.
-            Claude uses this to traverse links via ``curl``.
+        llmstxt_url: Full HTTP URL of ``llms.txt``.
+        backend_port: TCP port the FastAPI server listens on.
+        session_ttl: Seconds of inactivity before a session is evicted.
+        max_sessions: Maximum number of simultaneous live Claude sessions.
     """
-    global _site_dir, _llmstxt_url
+    global _site_dir, _llmstxt_url, _backend_port, _session_ttl, _max_sessions
     _site_dir = site_dir
     _llmstxt_url = llmstxt_url
-    _logger.info("claude-chat: docs dir → %s  llmstxt → %s", site_dir, llmstxt_url)
+    _backend_port = backend_port
+    _session_ttl = session_ttl
+    _max_sessions = max_sessions
+    _logger.info(
+        "claude-chat: docs dir → %s  llmstxt → %s  port=%d  ttl=%ds  max_sessions=%d",
+        site_dir, llmstxt_url, backend_port, session_ttl, max_sessions,
+    )
 
 
 # ── Docs loading (filesystem, not HTTP) ───────────────────────────────────────
@@ -174,8 +190,8 @@ def _build_system_prompt(custom_prompt: str = "") -> str:
 # Question queue items:  (question: str, reply_q: asyncio.Queue)
 # Reply queue items:     ("text", str) | ("error", str) | ("done", None)
 
-_SESSION_TTL = 7200   # seconds before an idle session is evicted
-_MAX_SESSIONS = 10    # cap on simultaneous live Claude CLI processes
+# Session constants — overridden at runtime by configure()
+# Read as _session_ttl / _max_sessions so they reflect mkdocs.yml values.
 
 
 @dataclass
@@ -244,7 +260,7 @@ async def _worker(question_q: asyncio.Queue, system_prompt: str) -> None:  # typ
 
 async def _evict_expired() -> None:
     now = time.monotonic()
-    expired = [sid for sid, s in list(_sessions.items()) if now - s.last_used > _SESSION_TTL]
+    expired = [sid for sid, s in list(_sessions.items()) if now - s.last_used > _session_ttl]
     for sid in expired:
         session = _sessions.pop(sid, None)
         if session:
@@ -262,7 +278,7 @@ async def _get_or_create_session(session_id: str, custom_prompt: str = "") -> _C
         return existing
 
     # Evict oldest if at capacity
-    if len(_sessions) >= _MAX_SESSIONS:
+    if len(_sessions) >= _max_sessions:
         oldest_id = min(_sessions, key=lambda sid: _sessions[sid].last_used)
         old = _sessions.pop(oldest_id)
         await old.question_q.put(None)
@@ -406,11 +422,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     )
 
 
-def run(port: int = 8001) -> None:
-    """Start the chat server on the given port.
-
-    Args:
-        port: TCP port to listen on. Defaults to ``8001``.
-    """
-    _logger.info("starting chat server on port %d", port)
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+def run() -> None:
+    """Start the chat server using the port set by :func:`configure`."""
+    _logger.info("starting chat server on port %d", _backend_port)
+    uvicorn.run(app, host="127.0.0.1", port=_backend_port, log_level="warning")

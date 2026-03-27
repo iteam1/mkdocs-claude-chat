@@ -13,6 +13,9 @@ plugins:
       position: bottom-right
       llmstxt_url: ""
       system_prompt: ""
+      backend_port: 8001
+      session_ttl: 7200
+      max_sessions: 10
 ```
 
 ## Options
@@ -129,6 +132,58 @@ plugins:
         You are a helpful assistant for Acme Corp's internal API docs.
         Always recommend the v2 API endpoints over deprecated v1 ones.
         When in doubt, refer users to the support team at help@acme.com.
+```
+
+---
+
+### `backend_port`
+
+| Type | Default |
+|---|---|
+| `int` | `8001` |
+
+TCP port the FastAPI chat server listens on. Change this if port `8001` is already in use on your machine.
+
+```yaml
+plugins:
+  - claude-chat:
+      backend_port: 8080
+```
+
+The widget automatically sends requests to `http://localhost:<backend_port>` — no other config change needed.
+
+---
+
+### `session_ttl`
+
+| Type | Default |
+|---|---|
+| `int` | `7200` |
+
+Seconds of inactivity before a chat session is evicted from memory. When a session is evicted, the next message from that browser starts a fresh Claude conversation (the UI history is still shown, but Claude's memory resets).
+
+Lower this to free up resources on shared machines; raise it for long documentation review sessions.
+
+```yaml
+plugins:
+  - claude-chat:
+      session_ttl: 3600   # 1 hour
+```
+
+---
+
+### `max_sessions`
+
+| Type | Default |
+|---|---|
+| `int` | `10` |
+
+Maximum number of simultaneous live Claude sessions (i.e. concurrent `claude` CLI processes). When the limit is reached, the oldest idle session is evicted to make room.
+
+```yaml
+plugins:
+  - claude-chat:
+      max_sessions: 5    # stricter limit on low-memory machines
 ```
 
 ---
