@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -9,7 +10,7 @@ import urllib.request
 from collections.abc import AsyncIterator
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -29,6 +30,19 @@ def configure(llmstxt_url: str) -> None:
     global _llmstxt_url
     _llmstxt_url = llmstxt_url
     _logger.info("claude-chat: docs index → %s", llmstxt_url)
+
+
+# Limit concurrent Claude subprocesses to avoid resource exhaustion.
+# Each active user gets their own claude CLI process; this caps the total.
+_MAX_CONCURRENT = 10
+_semaphore: asyncio.Semaphore | None = None  # created lazily inside the event loop
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    global _semaphore
+    if _semaphore is None:
+        _semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
+    return _semaphore
 
 
 # ── Conversation history ──────────────────────────────────────────────────────
@@ -59,8 +73,8 @@ _CACHE_TTL = 15  # seconds
 _docs_cache: dict[str, tuple[float, str]] = {}  # url -> (timestamp, content)
 
 
-def _fetch(url: str, timeout: int = 5) -> str:
-    """Fetch a URL and return the response body as text. Returns '' on error."""
+def _fetch_sync(url: str, timeout: int = 5) -> str:
+    """Blocking HTTP fetch. Run via asyncio.to_thread to avoid blocking the event loop."""
     try:
         with urllib.request.urlopen(url, timeout=timeout) as resp:  # noqa: S310
             return resp.read().decode("utf-8", errors="replace")
@@ -74,12 +88,15 @@ def _base_url(llmstxt_url: str) -> str:
     return llmstxt_url.rsplit("/", 1)[0] + "/"
 
 
-def _load_docs(llmstxt_url: str) -> str:
+async def _load_docs(llmstxt_url: str) -> str:
     """Fetch and return documentation content for the given llms.txt URL.
 
     Strategy:
     1. Try ``<base>/llms-full.txt`` — a single file with all docs concatenated.
     2. Fall back: fetch ``llms.txt``, parse every markdown link, fetch each page.
+
+    Fetches run in a thread pool so the asyncio event loop stays unblocked,
+    allowing concurrent users to be served simultaneously.
 
     Results are cached for :data:`_CACHE_TTL` seconds.
     """
@@ -89,24 +106,28 @@ def _load_docs(llmstxt_url: str) -> str:
         return cached[1]
 
     base = _base_url(llmstxt_url)
-    full_txt_url = base + "llms-full.txt"
-    content = _fetch(full_txt_url)
+
+    # Try llms-full.txt first (all docs in one file — one fetch for all users)
+    content = await asyncio.to_thread(_fetch_sync, base + "llms-full.txt")
 
     if not content:
-        # Fall back: fetch llms.txt index, then each linked page
-        index = _fetch(llmstxt_url)
+        # Fall back: fetch index then each linked page concurrently
+        index = await asyncio.to_thread(_fetch_sync, llmstxt_url)
         if index:
-            pages = [llmstxt_url]  # include the index itself
+            page_urls = []
             for match in re.finditer(r"\[([^\]]+)\]\(([^)]+)\)", index):
                 page_url = match.group(2)
                 if not page_url.startswith("http"):
                     page_url = base + page_url.lstrip("/")
-                pages.append(page_url)
-            parts = [index]
-            for page_url in pages[1:]:
-                page = _fetch(page_url)
-                if page:
-                    parts.append(f"\n\n---\n<!-- source: {page_url} -->\n\n{page}")
+                page_urls.append(page_url)
+
+            pages = await asyncio.gather(*[
+                asyncio.to_thread(_fetch_sync, url) for url in page_urls
+            ])
+            parts = [index] + [
+                f"\n\n---\n<!-- source: {url} -->\n\n{page}"
+                for url, page in zip(page_urls, pages) if page
+            ]
             content = "\n".join(parts)
 
     _docs_cache[llmstxt_url] = (now, content)
@@ -171,11 +192,12 @@ app.add_middleware(
 )
 
 
-def _build_system_prompt(llmstxt_url: str) -> str:
+async def _build_system_prompt(llmstxt_url: str) -> str:
     """Build the system prompt, pre-loading doc content from *llmstxt_url*.
 
     The server fetches the documentation itself (it has localhost access)
     and injects the content directly so Claude never needs network access.
+    All fetches are non-blocking so concurrent users are not serialised.
 
     Args:
         llmstxt_url: URL of the site's llms.txt (or llms-full.txt base).
@@ -186,7 +208,7 @@ def _build_system_prompt(llmstxt_url: str) -> str:
     if not llmstxt_url:
         return _SYSTEM_PROMPT_NO_DOCS
 
-    docs = _load_docs(llmstxt_url)
+    docs = await _load_docs(llmstxt_url)
     if not docs:
         _logger.warning("could not load docs from %s — Claude will answer without context", llmstxt_url)
         return _SYSTEM_PROMPT_NO_DOCS
@@ -207,7 +229,7 @@ async def _stream_claude(question: str, llmstxt_url: str, system_prompt: str = "
         SSE strings: ``data: {"text": "..."}\\n\\n`` per chunk,
         then ``data: [DONE]\\n\\n``.
     """
-    resolved_prompt = system_prompt.strip() or _build_system_prompt(llmstxt_url)
+    resolved_prompt = system_prompt.strip() or await _build_system_prompt(llmstxt_url)
 
     # Prepend conversation history to the question so Claude remembers prior turns.
     history = _get_history(session_id) if session_id else []
@@ -230,16 +252,23 @@ async def _stream_claude(question: str, llmstxt_url: str, system_prompt: str = "
     )
 
     assistant_reply: list[str] = []
-    try:
-        async for message in query(prompt=full_question, options=options):
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, TextBlock) and block.text:
-                        assistant_reply.append(block.text)
-                        yield f"data: {json.dumps({'text': block.text})}\n\n"
-    except Exception as exc:  # noqa: BLE001
-        _logger.error("Claude session error: %s", exc)
-        yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+    sem = _get_semaphore()
+    if sem.locked() and sem._value == 0:  # noqa: SLF001
+        yield f"data: {json.dumps({'error': 'Server busy — too many concurrent users. Please try again shortly.'})}\n\n"
+        yield "data: [DONE]\n\n"
+        return
+
+    async with sem:
+        try:
+            async for message in query(prompt=full_question, options=options):
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock) and block.text:
+                            assistant_reply.append(block.text)
+                            yield f"data: {json.dumps({'text': block.text})}\n\n"
+        except Exception as exc:  # noqa: BLE001
+            _logger.error("Claude session error: %s", exc)
+            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
 
     if session_id and assistant_reply:
         _append_history(session_id, "assistant", "".join(assistant_reply))
