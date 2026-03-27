@@ -7,7 +7,8 @@ A complete working MkDocs site with Claude chat in 5 minutes.
 ## Step 1 — Install
 
 ```bash
-pip install mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
+pip install git+https://github.com/iteam1/mkdocs-claude-chat
+pip install mkdocs-llmstxt
 ```
 
 Make sure the Claude CLI is logged in:

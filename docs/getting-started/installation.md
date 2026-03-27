@@ -38,16 +38,22 @@ pip install mkdocs
 - **`mkdocs-llmstxt`** generates `site/llms.txt` — a structured index of every page in your docs
 - **`mkdocs-claude-chat`** reads that index and gives it to Claude, so Claude knows your entire docs structure before the first question
 
-Install both together:
+Install the plugin:
 
 ```bash
-pip install mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
+pip install git+https://github.com/iteam1/mkdocs-claude-chat
 ```
 
 Or with `uv`:
 
 ```bash
-uv add mkdocs-llmstxt git+https://github.com/iteam1/mkdocs-claude-chat
+uv pip install git+https://github.com/iteam1/mkdocs-claude-chat
+```
+
+Install the companion plugin that generates `llms.txt`:
+
+```bash
+pip install mkdocs-llmstxt
 ```
 
 ---
