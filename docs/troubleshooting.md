@@ -61,35 +61,18 @@ Then restart `mkdocs serve`.
 
 **Symptom**: Claude says "I don't have specific documentation about..." or answers incorrectly.
 
-**Cause**: The `llmstxt_url` injected into the page is wrong — usually pointing to the remote `site_url` instead of the local dev server.
+**Cause**: `llms-full.txt` / `llms.txt` is missing from the built site, so the backend has no docs to embed in the system prompt.
 
-**Check 1 — hard-refresh the browser**
+The backend reads docs **directly from disk** (no HTTP involved). Every build writes the file; every new chat session reads it fresh.
 
-The browser may be showing a cached page with the old URL. Press `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac).
-
-**Check 2 — inspect the injected config**
-
-Open browser DevTools → Console and run:
-
-```js
-window.__CLAUDE_CHAT_CONFIG__
-```
-
-The `llmstxtUrl` should point to your local dev server:
-
-```
-http://127.0.0.1:8000/<your-site-path>/llms.txt
-```
-
-Not the remote `site_url`.
-
-**Check 3 — verify llms.txt is being generated**
+**Check 1 — verify the file exists after build**
 
 ```bash
-curl http://127.0.0.1:8000/<your-site-path>/llms.txt
+ls site/llms-full.txt   # preferred (all docs in one file)
+ls site/llms.txt        # fallback index
 ```
 
-If it returns HTML instead of Markdown, the `mkdocs-llmstxt` plugin is not installed or not configured.
+If neither file exists, the `mkdocs-llmstxt` plugin is not installed or not configured.
 
 Install it:
 
@@ -102,11 +85,26 @@ Add to `mkdocs.yml`:
 ```yaml
 plugins:
   - llmstxt:
+      full_output: llms-full.txt   # single file with all docs — recommended
       sections:
         Docs:
           - "**"
   - claude-chat
 ```
+
+**Check 2 — trigger a fresh chat session**
+
+Docs are embedded when a **new** session starts. Reload the page (new session ID) and ask your question again.
+
+**Check 3 — check backend logs**
+
+Run `mkdocs serve` and look for:
+
+```
+DEBUG   - claude-chat: loaded docs (NNNNN chars) from /path/to/site/llms-full.txt
+```
+
+If you see a warning instead (`no llms-full.txt or llms.txt found`), the file is missing from the build output.
 
 ---
 
@@ -114,17 +112,19 @@ plugins:
 
 **Symptom**: Claude explicitly says it cannot connect to `127.0.0.1:8000`.
 
-**Cause**: Claude runs in a sandboxed subprocess that cannot reach `localhost`. This is expected — the **plugin backend fetches the docs for Claude** automatically (server-side), so Claude should never need to reach `localhost` itself.
+**Cause**: Claude runs in a sandboxed subprocess that cannot reach `localhost`. This is expected — the **plugin backend reads docs directly from the built site directory** on disk and injects them into Claude's system prompt, so Claude never needs localhost access.
 
-If you see this error, it means the backend pre-fetch failed and the docs content is not in Claude's context.
+If you see this error, the docs content is already in Claude's context (embedded in the system prompt). The error appears only if Claude tries to fetch more pages on its own, which it should not need to do.
 
-**Fix**: Check that `llms.txt` is accessible from the backend process:
+**Check** that `llms-full.txt` or `llms.txt` is present in your site output directory after build:
 
 ```bash
-curl http://127.0.0.1:8000/<your-site-path>/llms.txt
+ls $(mkdocs get-config site_dir)/llms-full.txt 2>/dev/null || echo "not found"
+# or:
+ls site/llms-full.txt
 ```
 
-If that returns content, restart `mkdocs serve` and hard-refresh the browser.
+If neither file exists, the `mkdocs-llmstxt` plugin is not installed or not configured. See [Chatbot answers from general knowledge](#chatbot-answers-from-general-knowledge-instead-of-your-docs).
 
 ---
 
