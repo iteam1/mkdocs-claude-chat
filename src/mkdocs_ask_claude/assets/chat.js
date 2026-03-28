@@ -365,6 +365,17 @@
     scrollToBottom();
   }
 
+  function collapseAllToolBlocks() {
+    Object.values(_toolBlocks).forEach(function(block) {
+      var body   = block.el.querySelector(".cc-tool-body");
+      var toggle = block.el.querySelector(".cc-tool-toggle");
+      if (body && body.style.display !== "none") {
+        body.style.display = "none";
+        if (toggle) toggle.textContent = "▸";
+      }
+    });
+  }
+
   function truncateCmd(cmd) {
     const first = cmd.split("\n")[0].trim();
     return first.length > 60 ? first.slice(0, 57) + "…" : first;
@@ -408,27 +419,35 @@
   async function* streamResponse(question) {
     const res = await fetch(cfg.backendUrl + "/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Accept": "text/event-stream" },
       body: JSON.stringify({ question: question, llmstxt_url: cfg.llmstxtUrl, system_prompt: cfg.systemPrompt, session_id: sessionId }),
     });
     if (!res.ok) {
       throw new Error("Server error: " + res.status);
     }
+    if (!res.body) {
+      throw new Error("Streaming not supported in this browser");
+    }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop(); // keep incomplete line
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith("data: ")) {
-          yield trimmed.slice(6).trim();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        // normalize \r\n and \r to \n for cross-browser compatibility
+        const lines = buf.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+        buf = lines.pop(); // keep incomplete line
+        for (const line of lines) {
+          if (line.startsWith("data: ")) yield line.slice(6).trim();
         }
       }
+      // flush remaining buffer
+      buf += decoder.decode();
+      if (buf.startsWith("data: ")) yield buf.slice(6).trim();
+    } finally {
+      reader.cancel().catch(function() {});
     }
   }
 
@@ -486,6 +505,7 @@
       appendError("Chat unavailable — " + (err.message || "server not running"));
     } finally {
       hideLoading();
+      collapseAllToolBlocks();
       // render accumulated markdown once streaming is done
       if (streamBubble && rawText) {
         const html = renderMarkdown(rawText);
