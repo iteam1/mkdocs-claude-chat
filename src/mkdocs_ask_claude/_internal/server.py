@@ -209,7 +209,7 @@ async def _worker(question_q: asyncio.Queue, system_prompt: str) -> None:  # typ
     """Background task: owns one ClaudeSDKClient and processes questions serially."""
     options = ClaudeAgentOptions(
         system_prompt=system_prompt,
-        permission_mode="default",
+        permission_mode="bypassPermissions",
         allowed_tools=["Bash(curl *)", "Bash(grep *)", "WebFetch", "WebSearch"],
     )
     try:
