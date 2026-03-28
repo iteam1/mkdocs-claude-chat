@@ -394,29 +394,31 @@ body.cc-resizing {
 
 /* ── Tool call blocks ────────────────────────────────────────────── */
 .cc-tool-call {
-  align-self: flex-start;
-  width: 100%;
-  max-width: 95%;
+  align-self: stretch !important;
+  width: auto !important;
+  max-width: 100%;
   border: 1px solid var(--cc-border);
-  border-radius: 8px;
+  border-left: 3px solid var(--cc-primary);
+  border-radius: 6px;
   overflow: hidden;
   font-size: 12px;
-  background: var(--cc-surface);
+  background: #f3f4f6;
+  min-height: 28px;
 }
 
 .cc-tool-header {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 7px 10px;
   cursor: pointer;
   user-select: none;
-  background: var(--cc-surface);
-  border-bottom: 1px solid var(--cc-border);
+  background: #f3f4f6;
+  min-height: 28px;
 }
 
 .cc-tool-header:hover {
-  background: var(--cc-border);
+  background: #e5e7eb;
 }
 
 .cc-tool-status {
@@ -459,6 +461,7 @@ body.cc-resizing {
 
 .cc-tool-body {
   background: rgba(0, 0, 0, 0.03);
+  border-top: 1px solid var(--cc-border);
 }
 
 .cc-tool-cmd,

@@ -363,6 +363,11 @@
     } else {
       block.outputEl.style.display = "none";
     }
+    // auto-collapse after result arrives — user can click to expand
+    var body   = block.el.querySelector(".cc-tool-body");
+    var toggle = block.el.querySelector(".cc-tool-toggle");
+    if (body) body.style.display = "none";
+    if (toggle) toggle.textContent = "▸";
     // update history entry
     const histIdx = _pendingToolHistory[id];
     if (histIdx !== undefined) {
