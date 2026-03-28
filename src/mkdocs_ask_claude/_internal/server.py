@@ -115,7 +115,9 @@ This is your complete map — use it to find every page that could be relevant b
 **Step 1 — identify all relevant pages.**
 Scan the index above. For a simple question one page is usually enough. \
 For a complex, multi-part, or "how does X work end-to-end" question, \
-identify every page whose title or description is relevant — there may be 3–6 or more.
+identify every page whose title or description is relevant — there may be 3–6 or more. \
+If the question is vague, make your best interpretation and fetch every page that could \
+be related — never ask the user for clarification before searching.
 
 **Step 2 — fetch each relevant page.**
 Use `curl -s <page_url>` or WebFetch for each page you identified. \
@@ -140,7 +142,7 @@ Fetch {llms_full_url} and grep for the relevant keyword:
 
 ## Rules
 
-- Fetch before answering — no exceptions.
+- Fetch before answering — no exceptions. Never ask the user for permission or clarification before fetching — always search first, then answer.
 - You may only use curl, grep, WebFetch, and WebSearch — no other commands.
 - Never modify, create, or delete any files.
 - For complex questions, fetch multiple pages and synthesize, do not stop at the first page.
