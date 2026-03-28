@@ -26,7 +26,7 @@
   width: var(--cc-btn-size);
   height: var(--cc-btn-size);
   border-radius: 50%;
-  background: var(--cc-primary);
+  background: linear-gradient(135deg, #f97316 0%, #b45309 100%);
   color: #fff;
   border: none;
   cursor: pointer;
@@ -42,7 +42,7 @@
 }
 
 #ask-claude-btn:hover {
-  background: var(--cc-primary-hover);
+  background: linear-gradient(135deg, #ea580c 0%, #92400e 100%);
   box-shadow: 0 6px 20px rgba(217, 119, 6, 0.55);
 }
 
@@ -200,7 +200,7 @@ body.cc-resizing {
 }
 
 .cc-bubble-user {
-  background: linear-gradient(135deg, var(--cc-user-bubble) 0%, #7080e8 100%);
+  background: var(--cc-user-bubble);
   color: var(--cc-user-text);
   align-self: flex-end;
   border-bottom-right-radius: 4px;
