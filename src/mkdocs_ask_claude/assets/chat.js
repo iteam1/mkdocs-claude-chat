@@ -30,6 +30,7 @@
   // Chat history — persisted in sessionStorage for UI restoration across page loads.
   let chatHistory = [];
   let _pendingToolHistory = {};   // tool_use id → index in chatHistory
+  let _currentStreamBubble = null; // anchor so tool blocks are inserted before the answer
 
   // Button drag state
   let buttonX = window.innerWidth - 28 - 16;   // center X (28 = half of 56px btn)
@@ -338,7 +339,11 @@
       toggle.textContent = open ? "▸" : "▾";
     });
 
-    messagesEl.appendChild(wrap);
+    if (_currentStreamBubble && _currentStreamBubble.parentNode === messagesEl) {
+      messagesEl.insertBefore(wrap, _currentStreamBubble);
+    } else {
+      messagesEl.appendChild(wrap);
+    }
     scrollToBottom();
     _toolBlocks[id] = {
       el: wrap,
@@ -483,10 +488,15 @@
     appendMessage("user", question);
     showLoading();
 
-    let streamBubble = null;
     let rawText = "";
     _toolBlocks = {};          // reset tool blocks for this message
     _pendingToolHistory = {};  // reset pending tool history entries
+
+    // Pre-create the answer bubble so tool blocks can always be inserted before it
+    _currentStreamBubble = document.createElement("div");
+    _currentStreamBubble.className = "cc-bubble-assistant";
+    _currentStreamBubble.style.display = "none";
+    messagesEl.appendChild(_currentStreamBubble);
 
     try {
       for await (const payload of streamResponse(question)) {
@@ -495,13 +505,9 @@
           const data = JSON.parse(payload);
           if (data.text) {
             hideLoading();
-            if (!streamBubble) {
-              streamBubble = document.createElement("div");
-              streamBubble.className = "cc-bubble-assistant";
-              messagesEl.appendChild(streamBubble);
-            }
+            _currentStreamBubble.style.display = "";
             rawText += data.text;
-            streamBubble.textContent = rawText;  // plain text while streaming
+            _currentStreamBubble.textContent = rawText;  // plain text while streaming
             scrollToBottom();
           } else if (data.tool_call) {
             hideLoading();
@@ -525,13 +531,16 @@
     } finally {
       hideLoading();
       collapseAllToolBlocks();
-      // render accumulated markdown once streaming is done
-      if (streamBubble && rawText) {
+      if (rawText) {
         const html = renderMarkdown(rawText);
-        streamBubble.innerHTML = html;
+        _currentStreamBubble.innerHTML = html;
         addToHistory({ type: "assistant", html: html });
         scrollToBottom();
+      } else if (_currentStreamBubble) {
+        // no text received — remove the empty placeholder
+        _currentStreamBubble.parentNode && _currentStreamBubble.parentNode.removeChild(_currentStreamBubble);
       }
+      _currentStreamBubble = null;
       inputEl.disabled = false;
       sendEl.disabled = false;
       inputEl.focus();
@@ -682,6 +691,21 @@
     // Health check — run immediately then every 30 seconds
     checkHealth();
     setInterval(checkHealth, 30000);
+
+    // Close panel on page navigation (works with both full reloads and instant navigation)
+    document.addEventListener("click", function(e) {
+      if (!panelOpen) return;
+      var link = e.target.closest("a[href]");
+      if (!link) return;
+      var href = link.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") ||
+          href.startsWith("javascript:") || link.target === "_blank") return;
+      togglePanel();
+    }, true);
+
+    window.addEventListener("popstate", function() {
+      if (panelOpen) togglePanel();
+    });
 
     // Pointer events for button drag + tap
     btn.addEventListener("pointerdown", onPointerDown);
