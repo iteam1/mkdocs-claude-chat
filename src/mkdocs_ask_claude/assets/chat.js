@@ -532,7 +532,6 @@
       appendError("Chat unavailable — " + (err.message || "server not running"));
     } finally {
       hideLoading();
-      collapseAllToolBlocks();
       if (rawText) {
         const html = renderMarkdown(rawText);
         _currentStreamBubble.innerHTML = html;
