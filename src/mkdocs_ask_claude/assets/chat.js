@@ -14,6 +14,7 @@
   const STORAGE_KEY    = "cc-panel-width";
   const SESSION_KEY    = "cc-session-id";
   const HISTORY_KEY    = "cc-chat-history";
+  const PANEL_OPEN_KEY = "cc-panel-open";
   const HISTORY_MAX    = 60;     // max stored messages
   const TOOL_OUT_MAX   = 600;    // max chars of tool output to store
 
@@ -162,6 +163,7 @@
   // ── Panel toggle ──────────────────────────────────────────────────
   function togglePanel() {
     panelOpen = !panelOpen;
+    sessionStorage.setItem(PANEL_OPEN_KEY, panelOpen ? "1" : "");
     if (panelOpen) {
       panel.classList.add("open");
       document.body.classList.add("cc-panel-open");
@@ -688,24 +690,12 @@
     // Restore chat history from previous page visits
     restoreHistory();
 
+    // Restore panel open state across page navigation
+    if (sessionStorage.getItem(PANEL_OPEN_KEY)) togglePanel();
+
     // Health check — run immediately then every 30 seconds
     checkHealth();
     setInterval(checkHealth, 30000);
-
-    // Close panel on page navigation (works with both full reloads and instant navigation)
-    document.addEventListener("click", function(e) {
-      if (!panelOpen) return;
-      var link = e.target.closest("a[href]");
-      if (!link) return;
-      var href = link.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("mailto:") ||
-          href.startsWith("javascript:") || link.target === "_blank") return;
-      togglePanel();
-    }, true);
-
-    window.addEventListener("popstate", function() {
-      if (panelOpen) togglePanel();
-    });
 
     // Pointer events for button drag + tap
     btn.addEventListener("pointerdown", onPointerDown);
