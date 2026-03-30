@@ -252,7 +252,7 @@ def _build_system_prompt(custom_prompt: str = "") -> str:
         # No local index — fall back based on what we know.
         if _llmstxt_url:
             # Instruct Claude to fetch the index from the live URL.
-            llms_full_url = _llmstxt_url.rsplit("/", 1)[0] + "/llms-full.txt"
+            llms_full_url = _llmstxt_url.replace("/llms.txt", "/llms-full.txt")
             prompt = _SYSTEM_PROMPT_FETCH_INDEX.format(
                 llmstxt_url=_llmstxt_url,
                 llms_full_url=llms_full_url,
@@ -262,7 +262,7 @@ def _build_system_prompt(custom_prompt: str = "") -> str:
         # No URL either.
         return _SYSTEM_PROMPT_NO_DOCS
 
-    llms_full_url = _llmstxt_url.rsplit("/", 1)[0] + "/llms-full.txt" if _llmstxt_url else "(unavailable)"
+    llms_full_url = _llmstxt_url.replace("/llms.txt", "/llms-full.txt") if _llmstxt_url else "(unavailable)"
     prompt = _SYSTEM_PROMPT.format(
         llms_index=llms_index,
         llms_full_url=llms_full_url,
