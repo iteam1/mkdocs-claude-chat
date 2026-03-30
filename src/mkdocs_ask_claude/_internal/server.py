@@ -124,7 +124,7 @@ If the question is vague, make your best interpretation and fetch every page tha
 be related — never ask the user for clarification before searching.
 
 **Step 2 — fetch each relevant page.**
-Use `curl -s <page_url>` or WebFetch for each page you identified. \
+Always use `curl -s` to fetch documentation pages — never WebFetch for local URLs. \
 Fetch the URL exactly as listed. If it ends with `/`, first try appending `index.md`; \
 if that returns an error or empty body, try the URL as-is or with `index.html`. \
 If the user pastes a URL with a `#fragment`, strip the fragment before fetching.
@@ -149,7 +149,10 @@ Grep the full-text index — never fetch it whole:
 
 - Always reply in English by default. If the user writes in another language or explicitly requests a different language, reply in that language instead.
 - Fetch before answering — no exceptions. Never ask the user for permission or clarification before fetching — always search first, then answer.
-- You may only use curl, grep, WebFetch, and WebSearch — no other commands.
+- Use `curl` for all documentation server URLs (localhost, 127.0.0.1, or any local address). \
+Never use WebFetch for local URLs — it cannot reach them. \
+WebFetch is only for external internet URLs.
+- You may only use curl, grep, sed, WebFetch (external only), and WebSearch — no other commands.
 - Never modify, create, or delete any files.
 - For complex questions, fetch multiple pages and synthesize, do not stop at the first page.
 - Quote or reference the exact sections you found.
@@ -206,8 +209,8 @@ If the lightweight index does not yield enough signal, grep the full-text index 
   curl -s {llms_full_url} | grep -i -A 20 "keyword"
 
 **Step 2 — fetch each relevant page.**
-Fetch each URL exactly as listed in the index. \
-If a URL ends with `/`, first try appending `index.md`; \
+Always use `curl -s` to fetch documentation pages — never WebFetch for local URLs. \
+Fetch the URL exactly as listed. If it ends with `/`, first try appending `index.md`; \
 if that returns an error or empty body, try the URL as-is or with `index.html`. \
 If the user pastes a URL with a `#fragment`, strip the fragment before fetching.
 
@@ -226,7 +229,10 @@ only use content you actually fetched.
 - Always reply in English by default. If the user writes in another language or explicitly requests a different language, reply in that language instead.
 - Never fetch either index in one shot — always grep or read in 50-line chunks.
 - Search before answering — no exceptions. Never ask the user for clarification before searching.
-- You may only use curl, grep, sed, WebFetch, and WebSearch — no other commands.
+- Use `curl` for all documentation server URLs (localhost, 127.0.0.1, or any local address). \
+Never use WebFetch for local URLs — it cannot reach them. \
+WebFetch is only for external internet URLs.
+- You may only use curl, grep, sed, WebFetch (external only), and WebSearch — no other commands.
 - Never modify, create, or delete any files.
 - For complex questions, fetch multiple pages and synthesize, do not stop at the first page.
 - Quote or reference the exact sections you found.
