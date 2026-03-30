@@ -41,6 +41,7 @@ _logger = get_logger(__name__)
 _site_dir: str = ""
 _llmstxt_url: str = ""   # HTTP URL of llms.txt, e.g. http://127.0.0.1:8000/site/llms.txt
 _backend_port: int = 8001
+_model: str = "claude-sonnet-4-6"
 _session_ttl: int = 7200
 _max_sessions: int = 10
 
@@ -50,6 +51,7 @@ def configure(
     llmstxt_url: str = "",
     *,
     backend_port: int = 8001,
+    model: str = "claude-sonnet-4-6",
     session_ttl: int = 7200,
     max_sessions: int = 10,
 ) -> None:
@@ -61,18 +63,20 @@ def configure(
         site_dir: Absolute path to the MkDocs build output directory.
         llmstxt_url: Full HTTP URL of ``llms.txt``.
         backend_port: TCP port the FastAPI server listens on.
+        model: Claude model ID to use for responses.
         session_ttl: Seconds of inactivity before a session is evicted.
         max_sessions: Maximum number of simultaneous live Claude sessions.
     """
-    global _site_dir, _llmstxt_url, _backend_port, _session_ttl, _max_sessions
+    global _site_dir, _llmstxt_url, _backend_port, _model, _session_ttl, _max_sessions
     _site_dir = site_dir
     _llmstxt_url = llmstxt_url
     _backend_port = backend_port
+    _model = model
     _session_ttl = session_ttl
     _max_sessions = max_sessions
     _logger.info(
-        "ask-claude: docs dir → %s  llmstxt → %s  port=%d  ttl=%ds  max_sessions=%d",
-        site_dir, llmstxt_url, backend_port, session_ttl, max_sessions,
+        "ask-claude: docs dir → %s  llmstxt → %s  port=%d  model=%s  ttl=%ds  max_sessions=%d",
+        site_dir, llmstxt_url, backend_port, model, session_ttl, max_sessions,
     )
 
 
@@ -214,10 +218,11 @@ class _ChatSession:
 _sessions: dict[str, _ChatSession] = {}
 
 
-async def _worker(question_q: asyncio.Queue, system_prompt: str) -> None:  # type: ignore[type-arg]
+async def _worker(question_q: asyncio.Queue, system_prompt: str, model: str = "") -> None:  # type: ignore[type-arg]
     """Background task: owns one ClaudeSDKClient and processes questions serially."""
     options = ClaudeAgentOptions(
         system_prompt=system_prompt,
+        model=model or _model,
         permission_mode="bypassPermissions",
         allowed_tools=["Bash(curl *)", "Bash(grep *)", "WebFetch", "WebSearch"],
     )
@@ -296,7 +301,7 @@ async def _get_or_create_session(session_id: str, custom_prompt: str = "") -> _C
 
     system_prompt = _build_system_prompt(custom_prompt)
     question_q: asyncio.Queue = asyncio.Queue()  # type: ignore[type-arg]
-    task = asyncio.create_task(_worker(question_q, system_prompt))
+    task = asyncio.create_task(_worker(question_q, system_prompt, _model))
 
     session = _ChatSession(question_q=question_q, task=task)
     _sessions[session_id] = session

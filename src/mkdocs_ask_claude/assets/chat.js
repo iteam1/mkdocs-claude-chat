@@ -199,7 +199,10 @@
     s = s.replace(/\x00L(\d+)\x00/g, function(_, i) {
       var l = links[+i];
       var esc = l.label.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      return '<a href="' + l.url + '" target="_blank" rel="noopener noreferrer">' + esc + "</a>";
+      // Only allow safe URL schemes to prevent javascript:/data: XSS via prompt injection
+      var safe = /^(https?:\/\/|\/)/i.test(l.url);
+      var href = safe ? l.url : "#";
+      return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + esc + "</a>";
     });
     // restore inline code
     s = s.replace(/\x00C(\d+)\x00/g, function(_, i) {

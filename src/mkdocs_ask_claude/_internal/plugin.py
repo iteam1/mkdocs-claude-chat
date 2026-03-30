@@ -22,7 +22,7 @@ _logger = get_logger(__name__)
 class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
     """MkDocs plugin that injects a Claude-powered chatbot widget into every page."""
 
-    _llmstxt_url: str
+    _llmstxt_url: str = ""
     _is_serving: bool = False
 
     def on_config(self, config: MkDocsConfig, **kwargs: object) -> MkDocsConfig | None:
@@ -82,6 +82,7 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
                 config["site_dir"],
                 self._llmstxt_url,
                 backend_port=self.config.backend_port,
+                model=self.config.model,
                 session_ttl=self.config.session_ttl,
                 max_sessions=self.config.max_sessions,
             )
@@ -134,6 +135,16 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
         self._is_serving = True
         _logger.info("starting chat backend on http://localhost:%d", self.config.backend_port)
 
+        # Pre-configure so the server binds to the correct port at startup.
+        # site_dir and llmstxt_url are not available yet — they will be set by on_post_build().
+        server.configure(
+            "",
+            backend_port=self.config.backend_port,
+            model=self.config.model,
+            session_ttl=self.config.session_ttl,
+            max_sessions=self.config.max_sessions,
+        )
+
         def _run() -> None:
             try:
                 server.run()
@@ -155,8 +166,9 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
         """Inject the chat widget config into each page's HTML output.
 
         Inserts a ``<script>window.__CLAUDE_CHAT_CONFIG__ = {...};</script>``
-        block immediately before the closing ``</body>`` tag so the widget
-        can read its settings without requiring any theme template override.
+        block immediately before the closing ``</head>`` tag so the variable
+        is defined before ``chat.js`` executes, regardless of whether the
+        theme loads extra_javascript with or without ``defer``.
 
         Args:
             output: The rendered HTML string for the current page.
@@ -178,4 +190,6 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
             "systemPrompt": self.config.system_prompt or "",
         }
         script = f"<script>window.__CLAUDE_CHAT_CONFIG__ = {json.dumps(cfg)};</script>"
-        return output.replace("</body>", f"{script}\n</body>", 1)
+        # Inject into <head> so the config variable is defined before chat.js runs,
+        # regardless of whether the theme loads extra_javascript with or without defer.
+        return output.replace("</head>", f"{script}\n</head>", 1)
