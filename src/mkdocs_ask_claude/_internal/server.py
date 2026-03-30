@@ -92,13 +92,6 @@ def _read_llms_index() -> str:
     return ""
 
 
-def _llms_full_path() -> Path | None:
-    """Return the path to ``llms-full.txt`` if it exists."""
-    if not _site_dir:
-        return None
-    p = Path(_site_dir) / "llms-full.txt"
-    return p if p.exists() else None
-
 
 # ── System prompts ────────────────────────────────────────────────────────────
 
@@ -132,12 +125,13 @@ be related — never ask the user for clarification before searching.
 
 **Step 2 — fetch each relevant page.**
 Use `curl -s <page_url>` or WebFetch for each page you identified. \
-If a page URL ends with `/` append `index.md`. \
-If the user pastes a URL with a `#fragment`, strip the fragment and fetch the `.md`.
+Fetch the URL exactly as listed. If it ends with `/`, first try appending `index.md`; \
+if that returns an error or empty body, try the URL as-is or with `index.html`. \
+If the user pastes a URL with a `#fragment`, strip the fragment before fetching.
 
 Pipe through grep when you only need a specific section:
 
-  curl -s <page_url>/index.md | grep -i -A 40 "keyword"
+  curl -s <page_url> | grep -i -A 40 "keyword"
 
 **Step 3 — synthesize across all fetched pages.**
 Combine what you found into a single, coherent answer. \
@@ -181,42 +175,42 @@ the documentation indexed at {llmstxt_url}. You must NOT modify, create, or \
 delete any files, run shell commands, or take any action outside of fetching \
 documentation pages.
 
-## Documentation index
+## Available indexes
 
-The index at {llmstxt_url} follows the llms.txt standard and lists every \
-documentation page with its URL and a short description. \
-The index may be very large — never fetch it whole. \
-Always grep it for keywords instead.
+Two indexes are available — never fetch either one whole:
+- {llmstxt_url} — lightweight: page titles, URLs, short descriptions.
+- {llms_full_url} — full-text: complete content of every page, grepable.
 
 ## How to answer questions
 
-**Step 1 — discover relevant pages from the index (never load it whole).**
+**Step 1 — discover relevant pages (never load either index whole).**
 
-Try keyword grep first — fast and targeted:
+Start by grepping the lightweight index with keywords from the question:
 
   curl -s {llmstxt_url} | grep -i -A 2 "keyword"
 
-Run several greps with different keywords. If grep results are sparse or ambiguous, \
-scan the index in small chunks of 50 lines at a time until you find enough matches:
+Run several greps with different keywords. If results are sparse or ambiguous, \
+scan in 50-line chunks until you have enough matches:
 
   curl -s {llmstxt_url} | sed -n '1,50p'
   curl -s {llmstxt_url} | sed -n '51,100p'
-  curl -s {llmstxt_url} | sed -n '101,150p'
-  ... and so on, stopping as soon as you have enough relevant page URLs.
+  ... stopping as soon as you have enough relevant URLs.
 
-Stop scanning as soon as you have identified all the pages you need. \
-Never read more of the index than necessary.
+If the lightweight index does not yield enough signal, grep the full-text index:
+
+  curl -s {llms_full_url} | grep -i -A 20 "keyword"
 
 **Step 2 — fetch each relevant page.**
-Use `curl -s <page_url>` or WebFetch for each URL you found in step 1. \
-If a URL ends with `/` append `index.md`. \
-If the user pastes a URL with a `#fragment`, strip the fragment and fetch the `.md`.
+Fetch each URL exactly as listed in the index. \
+If a URL ends with `/`, first try appending `index.md`; \
+if that returns an error or empty body, try the URL as-is or with `index.html`. \
+If the user pastes a URL with a `#fragment`, strip the fragment before fetching.
 
 Grep inside a page when you only need a specific section:
 
-  curl -s <page_url>/index.md | grep -i -A 40 "keyword"
+  curl -s <page_url> | grep -i -A 40 "keyword"
 
-**Step 3 — synthesize across all fetched pages.**
+**Step 3 — synthesize across all fetched content.**
 Combine what you found into a single, coherent answer. \
 Cross-reference related sections, note dependencies or order of steps, \
 and quote the key passages. Never answer from memory alone — \
@@ -225,7 +219,7 @@ only use content you actually fetched.
 ## Rules
 
 - Always reply in English by default. If the user writes in another language or explicitly requests a different language, reply in that language instead.
-- Never fetch the full index in one shot — use grep or chunked reads (50 lines at a time).
+- Never fetch either index in one shot — always grep or read in 50-line chunks.
 - Search before answering — no exceptions. Never ask the user for clarification before searching.
 - You may only use curl, grep, sed, WebFetch, and WebSearch — no other commands.
 - Never modify, create, or delete any files.
@@ -254,8 +248,11 @@ def _build_system_prompt(custom_prompt: str = "") -> str:
     if not llms_index:
         # No local index — fall back based on what we know.
         if _llmstxt_url:
-            # Instruct Claude to grep the index progressively from the live URL.
-            prompt = _SYSTEM_PROMPT_FETCH_INDEX.format(llmstxt_url=_llmstxt_url)
+            llms_full_url = _llmstxt_url.replace("/llms.txt", "/llms-full.txt")
+            prompt = _SYSTEM_PROMPT_FETCH_INDEX.format(
+                llmstxt_url=_llmstxt_url,
+                llms_full_url=llms_full_url,
+            )
             _logger.debug("system prompt (url-index mode, %d chars)", len(prompt))
             return prompt
         # No URL either.
