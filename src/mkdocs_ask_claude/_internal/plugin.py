@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import threading
 from typing import TYPE_CHECKING
 
@@ -76,6 +75,13 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
         if not self.config.enabled:
             return
         assets.copy_to_site(config["site_dir"])
+        assets.write_config(config["site_dir"], {
+            "backendUrl": f"http://127.0.0.1:{self.config.backend_port}",
+            "llmstxtUrl": self._llmstxt_url,
+            "chatTitle": self.config.chat_title,
+            "position": self.config.position,
+            "systemPrompt": self.config.system_prompt or "",
+        })
         _logger.debug("copied chat assets to site_dir")
         if self._is_serving:
             server.configure(
@@ -133,7 +139,7 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
         if command != "serve" or not self.config.enabled:
             return
         self._is_serving = True
-        _logger.info("starting chat backend on http://localhost:%d", self.config.backend_port)
+        _logger.info("starting chat backend on http://127.0.0.1:%d", self.config.backend_port)
 
         # Pre-configure so the server binds to the correct port at startup.
         # site_dir and llmstxt_url are not available yet — they will be set by on_post_build().
@@ -155,41 +161,3 @@ class MkdocsAskClaudePlugin(BasePlugin[_PluginConfig]):
         t.start()
 
 
-    def on_post_page(
-        self,
-        output: str,
-        *,
-        page: Page,
-        config: MkDocsConfig,
-        **kwargs: object,
-    ) -> str | None:
-        """Inject the chat widget config into each page's HTML output.
-
-        Inserts a ``<script>window.__CLAUDE_CHAT_CONFIG__ = {...};</script>``
-        block immediately before the closing ``</head>`` tag so the variable
-        is defined before ``chat.js`` executes, regardless of whether the
-        theme loads extra_javascript with or without ``defer``.
-
-        Args:
-            output: The rendered HTML string for the current page.
-            page: The MkDocs ``Page`` object being rendered.
-            config: The global MkDocs configuration object.
-            **kwargs: Accepted for forward-compatibility with future MkDocs versions.
-
-        Returns:
-            The modified HTML string, or ``None`` when the plugin is disabled.
-        """
-        if not self.config.enabled:
-            return None
-
-        cfg = {
-            "backendUrl": f"http://localhost:{self.config.backend_port}",
-            "llmstxtUrl": self._llmstxt_url,
-            "chatTitle": self.config.chat_title,
-            "position": self.config.position,
-            "systemPrompt": self.config.system_prompt or "",
-        }
-        script = f"<script>window.__CLAUDE_CHAT_CONFIG__ = {json.dumps(cfg)};</script>"
-        # Inject into <head> so the config variable is defined before chat.js runs,
-        # regardless of whether the theme loads extra_javascript with or without defer.
-        return output.replace("</head>", f"{script}\n</head>", 1)

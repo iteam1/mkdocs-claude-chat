@@ -4,7 +4,7 @@
 
   // ── Config ────────────────────────────────────────────────────────
   const cfg = Object.assign(
-    { backendUrl: "http://localhost:8001", llmstxtUrl: "", chatTitle: "Ask Claude", position: "bottom-right", systemPrompt: "" },
+    { backendUrl: "http://127.0.0.1:8001", llmstxtUrl: "", chatTitle: "Ask Claude", position: "bottom-right", systemPrompt: "" },
     window.__CLAUDE_CHAT_CONFIG__ || {}
   );
 
